@@ -49,7 +49,7 @@ service cloud.firestore {
     // Role-hierarchy: only 'owner' may grant/keep 'owner' or 'master_admin'; admin/master_admin may only grant 'employee' or 'admin'
     function isValidRoleGrant(granterRole, newRole) {
       return granterRole == 'owner'
-          || ((granterRole == 'master_admin' || granterRole == 'admin') && (newRole == 'employee' || newRole == 'admin'));
+          || ((granterRole == 'master_admin' || granterRole == 'admin') && (newRole == 'employee' || newRole == 'admin' || newRole == 'mesero'));
     }
 
     // A member's permissions array, used for fine-grained (non-admin) write access
@@ -75,14 +75,15 @@ service cloud.firestore {
           && data.name is string && data.name.size() <= 200
           && data.ownerId is string && data.ownerId.size() <= 128
           && (!('invitationCode' in data) || (data.invitationCode is string && data.invitationCode.size() <= 100) || data.invitationCode == null)
-          && (!('createdAt' in data) || (data.createdAt is string || data.createdAt is timestamp));
+          && (!('createdAt' in data) || (data.createdAt is string || data.createdAt is timestamp))
+          && (!('businessType' in data) || (data.businessType is string && (data.businessType == 'retail' || data.businessType == 'restaurante')));
     }
 
     function isValidCompanyMember(data) {
       return data.userId is string && data.userId.size() <= 128
           && data.name is string && data.name.size() <= 200
           && data.email is string && data.email.size() <= 200
-          && data.role is string && (data.role == 'owner' || data.role == 'master_admin' || data.role == 'admin' || data.role == 'employee')
+          && data.role is string && (data.role == 'owner' || data.role == 'master_admin' || data.role == 'admin' || data.role == 'employee' || data.role == 'mesero')
           && (!('joinedAt' in data) || (data.joinedAt is string || data.joinedAt is timestamp));
     }
 
@@ -143,7 +144,11 @@ service cloud.firestore {
           && (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 200))
           && data.timestamp is string && data.timestamp.size() <= 100
           && data.status is string && (data.status == 'Completed' || data.status == 'Refunded')
-          && (!('branchId' in data) || (data.branchId is string && data.branchId.size() <= 128));
+          && (!('branchId' in data) || (data.branchId is string && data.branchId.size() <= 128))
+          && (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 128))
+          && (!('tableId' in data) || (data.tableId is string && data.tableId.size() <= 128))
+          && (!('waiterName' in data) || (data.waiterName is string && data.waiterName.size() <= 200))
+          && (!('createdAt' in data) || data.createdAt is int);
     }
 
     function isValidCashRegister(data) {
@@ -158,10 +163,32 @@ service cloud.firestore {
           && data.type is string && (data.type == 'surtido' || data.type == 'merma' || data.type == 'transfer_in' || data.type == 'transfer_out')
           && data.productId is string && data.productId.size() <= 128
           && data.productName is string && data.productName.size() <= 200
-          && data.quantity is number
+           && data.quantity is number
+           && data.branchId is string && data.branchId.size() <= 128
+           && (!('counterpartBranchId' in data) || (data.counterpartBranchId is string && data.counterpartBranchId.size() <= 128))
+           && (!('createdAt' in data) || data.createdAt is number);
+    }
+
+    function isValidTable(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.name is string && data.name.size() <= 200
           && data.branchId is string && data.branchId.size() <= 128
-          && (!('counterpartBranchId' in data) || (data.counterpartBranchId is string && data.counterpartBranchId.size() <= 128))
-          && (!('createdAt' in data) || data.createdAt is number);
+          && (!('capacity' in data) || (data.capacity is int && data.capacity >= 0))
+          && data.status is string && (data.status == 'libre' || data.status == 'ocupada' || data.status == 'por_cobrar')
+          && (!('currentOrderId' in data) || (data.currentOrderId is string && data.currentOrderId.size() <= 128) || data.currentOrderId == null);
+    }
+
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.tableId is string && data.tableId.size() <= 128
+          && data.branchId is string && data.branchId.size() <= 128
+          && data.status is string && (data.status == 'open' || data.status == 'closed')
+          && data.waiterId is string && data.waiterId.size() <= 128
+          && data.waiterName is string && data.waiterName.size() <= 200
+          && data.openedAt is string && data.openedAt.size() <= 100
+          && data.items is list
+          && (!('closedAt' in data) || (data.closedAt is string && data.closedAt.size() <= 100))
+          && (!('saleId' in data) || (data.saleId is string && data.saleId.size() <= 128));
     }
 
     // User Profile Document Access Rules
@@ -336,6 +363,25 @@ service cloud.firestore {
           && isValidStockMovement(incoming()) && incoming().id == movementId;
         allow update: if false;
         allow delete: if isVerifiedUser() && isOwnerOrAdmin(companyId);
+      }
+
+      // Tables subcollection inside Company
+      match /tables/{tableId} {
+        allow list, get: if isSignedIn() && isMemberOfCompany(companyId);
+        allow create, delete: if isVerifiedUser() && isOwnerOrAdmin(companyId) && isValidId(tableId) &&
+          (request.method == 'delete' || (isValidTable(incoming()) && incoming().id == tableId));
+        allow update: if isVerifiedUser() && isMemberOfCompany(companyId) && isValidId(tableId) &&
+          isValidTable(incoming()) && incoming().id == tableId;
+      }
+
+      // Orders subcollection inside Company
+      match /orders/{orderId} {
+        allow list, get: if isSignedIn() && isMemberOfCompany(companyId);
+        allow create: if isVerifiedUser() && isMemberOfCompany(companyId) && isValidId(orderId) &&
+          isValidOrder(incoming()) && incoming().id == orderId;
+        allow update: if isVerifiedUser() && isMemberOfCompany(companyId) && isValidId(orderId) &&
+          isValidOrder(incoming()) && incoming().id == orderId;
+        allow delete: if isVerifiedUser() && isOwnerOrAdmin(companyId) && isValidId(orderId);
       }
     }
 
