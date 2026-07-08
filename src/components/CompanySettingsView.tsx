@@ -1273,7 +1273,7 @@ export default function CompanySettingsView({
                                 ? 'bg-amber-50 border-amber-200 text-amber-700'
                                 : 'bg-slate-100 border-slate-200 text-slate-600'
                             }`}>
-                              {member.role === 'admin' ? '🛡️ Encargado' : member.role === 'mesero' ? '🍽️ Mesero' : '💼 Cajero'}
+                              {member.role === 'admin' ? '🛡️ Administrador' : member.role === 'mesero' ? '🍽️ Mesero' : '💼 Cajero'}
                             </span>
 
                             {/* Assign extra tasks */}
@@ -1308,7 +1308,7 @@ export default function CompanySettingsView({
                                 ? 'bg-amber-50 border-amber-300 text-amber-700'
                                 : 'bg-slate-50 border-slate-300 text-slate-700'
                             }`}>
-                              {member.role === 'master_admin' ? '🧙 Master Admin' : member.role === 'admin' ? '🛡️ Admin' : member.role === 'mesero' ? '🍽️ Mesero' : '💼 Empleado'}
+                              {member.role === 'master_admin' ? '🧙 Master Admin' : member.role === 'admin' ? '🛡️ Administrador' : member.role === 'mesero' ? '🍽️ Mesero' : '💼 Empleado'}
                             </span>
                           </div>
                         )}
@@ -1991,7 +1991,7 @@ export default function CompanySettingsView({
                 <div>
                   <h3 className="text-base font-black text-slate-800">Tareas Adicionales</h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    {selectedRoleMember.name} · <span className={`font-black ${selectedRoleMember.role === 'admin' ? 'text-emerald-600' : selectedRoleMember.role === 'mesero' ? 'text-amber-600' : 'text-indigo-600'}`}>{selectedRoleMember.role === 'admin' ? '🛡️ Encargado' : selectedRoleMember.role === 'mesero' ? '🍽️ Mesero' : '💼 Cajero'}</span>
+                    {selectedRoleMember.name} · <span className={`font-black ${selectedRoleMember.role === 'admin' ? 'text-emerald-600' : selectedRoleMember.role === 'mesero' ? 'text-amber-600' : 'text-indigo-600'}`}>{selectedRoleMember.role === 'admin' ? '🛡️ Administrador' : selectedRoleMember.role === 'mesero' ? '🍽️ Mesero' : '💼 Cajero'}</span>
                   </p>
                 </div>
                 <button
@@ -2246,7 +2246,7 @@ export default function CompanySettingsView({
                         >
                           <option value="employee">💼 Cajero / Empleado</option>
                           <option value="mesero">🍽️ Mesero</option>
-                          <option value="admin">🛡️ Encargado / Gerente</option>
+                          <option value="admin">🛡️ Administrador</option>
                         </select>
                       </div>
 

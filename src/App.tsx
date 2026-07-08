@@ -108,6 +108,7 @@ import {
 // Custom Tenant Components
 import CompanySelector from './components/CompanySelector';
 import CompanySettingsView from './components/CompanySettingsView';
+import AuditView from './components/AuditView';
 
 // UTF-8-safe string → base64 (plain btoa() mangles accented characters like á/é/í/ó/ú/ñ).
 const utf8ToBase64 = (str: string): string =>
@@ -410,7 +411,7 @@ export const getAvailableMonths = (allSales: Sale[]): string[] => {
 
 export default function App() {
   // Tabs: 'pos' | 'products' | 'customers' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing'
-  const [activeTab, setActiveTab] = useState<'pos' | 'products' | 'customers' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'products' | 'customers' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing' | 'audit'>('pos');
   const [branding, setBranding] = useState<Branding>({});
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
 
@@ -666,6 +667,11 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  // Restaurant mode: company-wide (not just the active branch), read by AuditView to cross-
+  // reference sales/orders/cash movements across the whole company. Separate from the
+  // single-branch `cashRegister` below (used to actually operate the till).
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [allCashRegisters, setAllCashRegisters] = useState<{ [branchId: string]: CashRegister }>({});
   const [selectedBranchId, setSelectedBranchId] = useState<string>('b1');
 
   // Prompts and custom Modals (bypassing restricted iframe prompt/confirms)
@@ -1286,6 +1292,29 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, `companies/${compId}/sales`);
     });
 
+    // Restaurant mode: open/closed tabs, read company-wide for the audit panel (Fase 2b)
+    // and for the gastronomic flow (Fase 4). No writes happen yet — orders start appearing
+    // once Fase 4 ships the table/comanda UI.
+    const unsubOrders = onSnapshot(collection(db, 'companies', compId, 'orders'), (snapshot) => {
+      const list: Order[] = [];
+      snapshot.forEach(d => list.push(d.data() as Order));
+      list.sort((a, b) => (b.openedAt ?? '').localeCompare(a.openedAt ?? ''));
+      setOrders(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `companies/${compId}/orders`);
+    });
+
+    // Company-wide cash register log (every branch, not just the active one) — separate
+    // from the single-branch `unsubCash` below, which drives the live till operations.
+    // Existing rules already let any member list/get the whole cashRegisters collection.
+    const unsubAllCashRegisters = onSnapshot(collection(db, 'companies', compId, 'cashRegisters'), (snapshot) => {
+      const map: { [branchId: string]: CashRegister } = {};
+      snapshot.forEach(d => { map[d.id] = d.data() as CashRegister; });
+      setAllCashRegisters(map);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `companies/${compId}/cashRegisters`);
+    });
+
     const unsubStockMovements = onSnapshot(collection(db, 'companies', compId, 'stockMovements'), (snapshot) => {
       const list: StockMovement[] = [];
       snapshot.forEach(d => list.push(d.data() as StockMovement));
@@ -1326,6 +1355,8 @@ export default function App() {
       unsubSuppliers();
       unsubMembers();
       unsubSales();
+      unsubOrders();
+      unsubAllCashRegisters();
       unsubStockMovements();
       unsubBranding();
       unsubPrintConfig();
@@ -3397,6 +3428,18 @@ export default function App() {
             </button>
           ))}
 
+          {/* Auditoría: owner/admin/master_admin only — deliberately its own gate (not the
+              `!== 'employee'` block above), since that check alone would also admit 'mesero'. */}
+          {isOwnerOrAdminRole && (
+            <button id="nav-audit"
+              onClick={() => { setActiveTab('audit'); setIsMobileMenuOpen(false); }}
+              className={activeTab === 'audit' ? navActiveClass : navInactiveClass}
+              style={activeTab === 'audit' ? navActiveStyle : {}}
+            >
+              <ShieldCheck className="w-5 h-5" /><span className="mt-1 md:mt-0">Auditoría</span>
+            </button>
+          )}
+
           <button id="nav-settings"
             onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
             className={activeTab === 'settings' ? navActiveClass : navInactiveClass}
@@ -5365,6 +5408,18 @@ export default function App() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* SCREEN: AUDITORÍA (owner/admin/master_admin only — gated at the nav level above) */}
+          {activeTab === 'audit' && (
+            <AuditView
+              companyName={branding.displayName || userCompanies[activeCompanyId || '']?.name || 'Mi Comercio'}
+              sales={sales}
+              orders={orders}
+              cashRegisters={allCashRegisters}
+              branches={branches}
+              members={members}
+            />
           )}
 
           {/* SCREEN: EMPRESA Y EQUIPO (SETTINGS) */}
