@@ -110,6 +110,7 @@ import CompanySelector from './components/CompanySelector';
 import CompanySettingsView from './components/CompanySettingsView';
 import AuditView from './components/AuditView';
 import WaiterShell from './components/WaiterShell';
+import EmployeePinLogin from './components/EmployeePinLogin';
 
 // UTF-8-safe string → base64 (plain btoa() mangles accented characters like á/é/í/ó/ú/ñ).
 const utf8ToBase64 = (str: string): string =>
@@ -383,6 +384,11 @@ export const formatMXN = (val: number): string => {
 
 const MONTH_NAMES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+// Device-level kiosk binding (Fase 3): once an owner/admin sets this from
+// CompanySettingsView, the login gate on this device skips straight to the
+// PIN pad for that company instead of showing the full company-code form.
+export const KIOSK_COMPANY_STORAGE_KEY = 'logic_kiosk_company_id';
+
 export const getCurrentMonthKey = (): string => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -615,6 +621,26 @@ export default function App() {
   const [authUsername, setAuthUsername] = useState('');
   const [isSignInLoading, setIsSignInLoading] = useState(false);
 
+  // Shared by the two-field form and the kiosk PIN pad — both resolve to the
+  // same virtual-email account (mirrors CompanySettingsView.handleCreateCredentialEmployee).
+  // No zero-padding: employee numbers must be 6+ real digits, set at account creation time.
+  const signInWithEmployeeCredentials = async (companyIdRaw: string, employeeNumberRaw: string) => {
+    const cleanCompanyId = companyIdRaw.trim().toLowerCase();
+    const cleanUsername = employeeNumberRaw.trim();
+    const virtualEmail = `${cleanCompanyId}_${cleanUsername}@logicpos.com`;
+    await signInWithEmailAndPassword(auth, virtualEmail, cleanUsername);
+  };
+
+  const describeSignInError = (err: any): string => {
+    if (err.code === 'auth/operation-not-allowed' || (err.message && err.message.includes('operation-not-allowed'))) {
+      return "El método de inicio de sesión por Correo/Contraseña está deshabilitado en tu Firebase Console.\n\nPara habilitarlo:\n1. Entra a console.firebase.google.com y ve a tu proyecto.\n2. Ve a 'Authentication' -> pestaña 'Sign-in method'.\n3. Habilita y guarda el proveedor 'Correo electrónico/contraseña'.";
+    }
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      return "El ID de comercio, usuario o contraseña son incorrectos.";
+    }
+    return "Credenciales incorrectas o problemas de conexión.";
+  };
+
   const handleCredentialSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authCompanyId.trim() || !authUsername.trim()) {
@@ -624,33 +650,50 @@ export default function App() {
 
     setIsSignInLoading(true);
     try {
-      const cleanCompanyId = authCompanyId.trim().toLowerCase();
-      const cleanUsername = authUsername.trim();
-
-      // Build virtual email
-      const virtualEmail = `${cleanCompanyId}_${cleanUsername}@logicpos.com`;
-
-      // Password = employee number as-is (mirrors creation logic — see CompanySettingsView.handleCreateCredentialEmployee).
-      // No zero-padding: employee numbers must be 6+ real digits, set at account creation time.
-      const effectivePassword = cleanUsername;
-
-      // Sign in natively with Firebase Auth using virtual email & password
-      await signInWithEmailAndPassword(auth, virtualEmail, effectivePassword);
+      await signInWithEmployeeCredentials(authCompanyId, authUsername);
 
       // Clean local Form State
       setAuthCompanyId('');
       setAuthUsername('');
     } catch (err: any) {
       console.error("Error signing in with employee credentials:", err);
-      let errMsg = "Credenciales incorrectas o problemas de conexión.";
-      if (err.code === 'auth/operation-not-allowed' || (err.message && err.message.includes('operation-not-allowed'))) {
-        errMsg = "El método de inicio de sesión por Correo/Contraseña está deshabilitado en tu Firebase Console.\n\nPara habilitarlo:\n1. Entra a console.firebase.google.com y ve a tu proyecto.\n2. Ve a 'Authentication' -> pestaña 'Sign-in method'.\n3. Habilita y guarda el proveedor 'Correo electrónico/contraseña'.";
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        errMsg = "El ID de comercio, usuario o contraseña son incorrectos.";
-      }
-      alert("Error de inicio de sesión: " + errMsg);
+      alert("Error de inicio de sesión: " + describeSignInError(err));
     } finally {
       setIsSignInLoading(false);
+    }
+  };
+
+  // Kiosk binding (Fase 3): once an owner/admin sets this device's company from
+  // CompanySettingsView, the login gate below skips the two-field form and shows
+  // the PIN pad pre-bound to that company — only the employee number is needed.
+  const [kioskCompanyId, setKioskCompanyId] = useState<string | null>(
+    () => localStorage.getItem(KIOSK_COMPANY_STORAGE_KEY)
+  );
+  const [isKioskSignInLoading, setIsKioskSignInLoading] = useState(false);
+  const [kioskSignInError, setKioskSignInError] = useState('');
+
+  const handleBindKiosk = (companyId: string) => {
+    localStorage.setItem(KIOSK_COMPANY_STORAGE_KEY, companyId);
+    setKioskCompanyId(companyId);
+  };
+
+  const handleUnbindKiosk = () => {
+    localStorage.removeItem(KIOSK_COMPANY_STORAGE_KEY);
+    setKioskCompanyId(null);
+    setKioskSignInError('');
+  };
+
+  const handleKioskPinSubmit = async (employeeNumber: string) => {
+    if (!kioskCompanyId) return;
+    setKioskSignInError('');
+    setIsKioskSignInLoading(true);
+    try {
+      await signInWithEmployeeCredentials(kioskCompanyId, employeeNumber);
+    } catch (err: any) {
+      console.error("Error signing in with kiosk PIN:", err);
+      setKioskSignInError(describeSignInError(err));
+    } finally {
+      setIsKioskSignInLoading(false);
     }
   };
 
@@ -3143,6 +3186,21 @@ export default function App() {
     );
   }
 
+  // Kiosk-bound device: skip the full company-code form and go straight to the
+  // PIN pad for the company this device was configured for (Fase 3). "Regresar"
+  // in the pad is the discreet reset — it unbinds the device and falls back to
+  // the two-field form / Google below.
+  if (!user && kioskCompanyId) {
+    return (
+      <EmployeePinLogin
+        onPinSubmit={handleKioskPinSubmit}
+        onCancel={handleUnbindKiosk}
+        errorMessage={kioskSignInError}
+        isSubmitting={isKioskSignInLoading}
+      />
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -5539,6 +5597,9 @@ export default function App() {
                 currentUserRole={activeCompanyRole}
                 currentUserId={user.uid}
                 userAvailableCompanies={userCompanies}
+                kioskCompanyId={kioskCompanyId}
+                onBindKiosk={handleBindKiosk}
+                onUnbindKiosk={handleUnbindKiosk}
                 onSwitchCompany={(id) => {
                   localStorage.setItem(`logic_active_company_${user.uid}`, id);
                   setActiveCompanyId(id);

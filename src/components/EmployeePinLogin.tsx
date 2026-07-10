@@ -16,16 +16,16 @@ export default function EmployeePinLogin({
 }: EmployeePinLoginProps) {
   const [pin, setPin] = useState<string>('');
   const [showPin, setShowPin] = useState<boolean>(false);
-  const pinLength = 4; // Standard 4-digit PIN
+  // Employee numbers are 6+ digits, not zero-padded (see
+  // CompanySettingsView.handleCreateCredentialEmployee) — length varies, so we
+  // can't auto-submit at a fixed count like a real PIN. minPinLength gates the
+  // submit button; maxPinLength is just a sane input cap.
+  const minPinLength = 6;
+  const maxPinLength = 12;
 
   const handleKeyPress = (num: string) => {
-    if (pin.length < pinLength) {
-      const newPin = pin + num;
-      setPin(newPin);
-      if (newPin.length === pinLength && onPinSubmit) {
-        // Trigger auto-submit when all digits are filled
-        onPinSubmit(newPin);
-      }
+    if (pin.length < maxPinLength) {
+      setPin(pin + num);
     }
   };
 
@@ -78,7 +78,7 @@ export default function EmployeePinLogin({
             </div>
             <div>
               <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 tracking-tight">Acceso de Personal</h3>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Introduce tu PIN asignado para iniciar turno</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Introduce tu número de empleado para iniciar turno</p>
             </div>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default function EmployeePinLogin({
         {/* PIN Indicators Area */}
         <div className="my-6 space-y-4 text-center">
           <div className="flex justify-center items-center space-x-4 h-12">
-            {Array.from({ length: pinLength }).map((_, index) => {
+            {Array.from({ length: Math.max(pin.length, minPinLength) }).map((_, index) => {
               const isActive = index < pin.length;
               return (
                 <div
@@ -191,13 +191,13 @@ export default function EmployeePinLogin({
           {/* Submit/Check Button (Trigger manually if needed, or visual indicator) */}
           <button
             type="button"
-            disabled={pin.length < pinLength || isSubmitting}
+            disabled={pin.length < minPinLength || isSubmitting}
             onClick={() => onPinSubmit && onPinSubmit(pin)}
             className="w-20 h-20 rounded-2xl flex items-center justify-center border shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] focus:ring-offset-2 active:scale-90 cursor-pointer transition duration-150 select-none disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: pin.length === pinLength ? 'var(--brand-primary, #6366f1)' : 'var(--brand-primary, #6366f1)10',
-              borderColor: pin.length === pinLength ? 'var(--brand-primary, #6366f1)' : 'transparent',
-              color: pin.length === pinLength ? '#ffffff' : 'var(--brand-primary, #6366f1)'
+              backgroundColor: pin.length >= minPinLength ? 'var(--brand-primary, #6366f1)' : 'var(--brand-primary, #6366f1)10',
+              borderColor: pin.length >= minPinLength ? 'var(--brand-primary, #6366f1)' : 'transparent',
+              color: pin.length >= minPinLength ? '#ffffff' : 'var(--brand-primary, #6366f1)'
             }}
           >
             <ShieldCheck className="w-5 h-5 animate-pulse" />

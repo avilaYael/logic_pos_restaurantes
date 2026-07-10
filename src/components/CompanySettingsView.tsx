@@ -102,6 +102,10 @@ interface CompanySettingsViewProps {
   onForgetWebPrinter?: () => void;
   onTestPrintWeb?: () => Promise<void>;
   isCredentialEmployee?: boolean;
+  /** Device-level kiosk binding (Fase 3) — companyId this device is bound to, if any. */
+  kioskCompanyId?: string | null;
+  onBindKiosk?: (companyId: string) => void;
+  onUnbindKiosk?: () => void;
 }
 
 export default function CompanySettingsView({
@@ -137,7 +141,10 @@ export default function CompanySettingsView({
   onConnectWebBluetoothPrinter,
   onForgetWebPrinter,
   onTestPrintWeb,
-  isCredentialEmployee = false
+  isCredentialEmployee = false,
+  kioskCompanyId = null,
+  onBindKiosk,
+  onUnbindKiosk
 }: CompanySettingsViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'info' | 'team' | 'code' | 'branding' | 'print' | 'backup'>('team');
 
@@ -1547,6 +1554,45 @@ export default function CompanySettingsView({
                     <span>Guardar Cambios</span>
                   </button>
                 </form>
+              )}
+
+              {(currentUserRole === 'owner' || currentUserRole === 'admin') && (onBindKiosk || onUnbindKiosk) && (
+                <div className="max-w-md pt-4 mt-4 border-t border-slate-100 space-y-3">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-850">Kiosko de Este Dispositivo</h4>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                      Vincula este dispositivo a <strong className="text-slate-700">{companyName}</strong> para que el
+                      login salte directo al teclado numérico del personal (sin pedir Código de Comercio cada vez).
+                      Solo afecta a este dispositivo/navegador.
+                    </p>
+                  </div>
+
+                  {kioskCompanyId === companyId ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start justify-between gap-3">
+                      <div className="flex items-start space-x-2.5">
+                        <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-emerald-700 font-bold leading-relaxed">
+                          Este dispositivo está vinculado a {companyName}.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onUnbindKiosk && onUnbindKiosk()}
+                        className="shrink-0 px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-extrabold text-[11px] rounded-lg cursor-pointer transition select-none"
+                      >
+                        Desvincular
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onBindKiosk && onBindKiosk(companyId)}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs rounded-xl shadow cursor-pointer transition select-none"
+                    >
+                      Configurar Este Dispositivo Como Kiosko
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
