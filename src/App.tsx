@@ -1700,6 +1700,89 @@ export default function App() {
     }));
   };
 
+  // Builds a Sale record and commits its side effects atomically (stock deltas, customer
+  // credit balance, cash register entry) — the shared core behind completeTransaction()'s
+  // single-cart POS checkout, and, going forward, closing a restaurant table/order (pass
+  // `extra` to link the Sale back to its origin `orders/{id}` — Fase 4b). Returns the
+  // created Sale so the caller can drive its own UI (receipt modal, ticket print, etc).
+  const buildAndCommitSale = (params: {
+    items: SaleItem[];
+    paymentMethod: Sale['paymentMethod'];
+    branchId: string;
+    discount?: number; // already-resolved amount, not a %
+    taxAmount?: number; // already-resolved amount, not a %
+    customerId?: string;
+    customerName?: string;
+    folio?: string;
+    requiresInvoice?: boolean;
+    extra?: { orderId?: string; tableId?: string; waiterName?: string };
+  }): Sale => {
+    const { items, paymentMethod, branchId, discount = 0, taxAmount = 0, customerId, customerName, folio, requiresInvoice, extra } = params;
+
+    const subtotal = items.reduce((acc, item) => acc + item.salePrice * item.quantity, 0);
+    const total = Math.max(0, subtotal - discount) + taxAmount;
+
+    // 1. New Sale structure
+    const newSale: Sale = {
+      id: 'S-' + Math.floor(Math.random() * 900000 + 100000),
+      items,
+      subtotal,
+      discount,
+      tax: taxAmount,
+      total,
+      paymentMethod,
+      customerId,
+      customerName,
+      timestamp: new Date().toLocaleString(),
+      createdAt: Date.now(),
+      status: 'Completed',
+      branchId,
+      folio,
+      requiresInvoice,
+      invoiceStatus: requiresInvoice ? 'pending' : undefined,
+      // `currentUserMember.name` covers owner/encargado/cajero alike (all are member docs);
+      // falls back to the Auth display name for the rare case the member doc hasn't synced yet.
+      employeeName: currentUserMember?.name || user?.displayName || undefined,
+      orderId: extra?.orderId,
+      tableId: extra?.tableId,
+      waiterName: extra?.waiterName
+    };
+
+    // 2. Adjust Product Inventory atomically (per-product Firestore transaction — see
+    // applyStockDeltas). Avoids two terminals selling concurrently from silently
+    // clobbering each other's stock count.
+    applyStockDeltas(items.map(item => ({
+      productId: item.productId,
+      branchId,
+      qtyDelta: -item.quantity
+    })));
+
+    // 3. Adjust Customer credit balance if credit payment (atomic increment)
+    if (customerId && paymentMethod === 'Credit') {
+      applyCustomerBalanceDelta(customerId, total);
+    }
+
+    // 4. Record Cash/Finance/Card/Transfer transaction in audit log (atomic — see applyCashDelta)
+    const activeBranch = branches.find(b => b.id === branchId);
+    const branchNameSuffix = activeBranch ? ` (${activeBranch.name})` : '';
+    const paymentLabel = paymentMethod === 'Cash' ? 'Efectivo' : paymentMethod === 'Card' ? 'Tarjeta' : paymentMethod === 'Transfer' ? 'Transferencia' : 'Crédito';
+    const descFolio = (paymentMethod === 'Card' || paymentMethod === 'Transfer') && folio ? ` [Folio: ${folio}]` : '';
+
+    applyCashDelta(branchId, paymentMethod === 'Cash' ? total : 0, [{
+      type: 'Venta',
+      amount: total,
+      description: `Venta ${newSale.id} - ${paymentLabel}${descFolio}${branchNameSuffix}`,
+      time: new Date().toLocaleTimeString(),
+      createdAt: Date.now(),
+      branchId
+    }]);
+
+    // 5. Save the new sale record (only this single new doc gets written/diffed)
+    saveAllData(products, customers, [newSale, ...sales], cashRegister);
+
+    return newSale;
+  };
+
   // Pos / Cart Operations State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1879,66 +1962,22 @@ export default function App() {
       return;
     }
 
-    // 1. New Sale structure
-    const newSale: Sale = {
-      id: 'S-' + Math.floor(Math.random() * 900000 + 100000),
+    const newSale = buildAndCommitSale({
       items: cart.map(item => ({
         productId: item.product.id,
         name: item.product.name,
         quantity: item.quantity,
         salePrice: item.product.salePrice
       })),
-      subtotal: cartValues.subtotal,
-      discount: cartValues.calculatedDiscount,
-      tax: cartValues.taxValue,
-      total: cartValues.total,
       paymentMethod,
+      branchId: selectedBranchId, // Associate sale with the active branch!
+      discount: cartValues.calculatedDiscount,
+      taxAmount: cartValues.taxValue,
       customerId: selectedCustomer?.id,
       customerName: selectedCustomer?.name,
-      timestamp: new Date().toLocaleString(),
-      createdAt: Date.now(),
-      status: 'Completed',
-      branchId: selectedBranchId, // Associate sale with the active branch!
       folio: (paymentMethod === 'Card' || paymentMethod === 'Transfer') ? folioNumber.trim() : undefined,
-      requiresInvoice,
-      invoiceStatus: requiresInvoice ? 'pending' : undefined,
-      // `currentUserMember.name` covers owner/encargado/cajero alike (all are member docs);
-      // falls back to the Auth display name for the rare case the member doc hasn't synced yet.
-      employeeName: currentUserMember?.name || user?.displayName || undefined
-    };
-
-    // 2. Adjust Product Inventory atomically (per-product Firestore transaction — see
-    // applyStockDeltas). Avoids two terminals selling concurrently from silently
-    // clobbering each other's stock count.
-    applyStockDeltas(cart.map(item => ({
-      productId: item.product.id,
-      branchId: selectedBranchId,
-      qtyDelta: -item.quantity
-    })));
-
-    // 3. Adjust Customer credit balance if credit payment (atomic increment)
-    if (selectedCustomer && paymentMethod === 'Credit') {
-      applyCustomerBalanceDelta(selectedCustomer.id, cartValues.total);
-    }
-
-    // 4. Record Cash/Finance/Card/Transfer transaction in audit log (atomic — see applyCashDelta)
-    const activeBranch = branches.find(b => b.id === selectedBranchId);
-    const branchNameSuffix = activeBranch ? ` (${activeBranch.name})` : '';
-    const paymentLabel = paymentMethod === 'Cash' ? 'Efectivo' : paymentMethod === 'Card' ? 'Tarjeta' : paymentMethod === 'Transfer' ? 'Transferencia' : 'Crédito';
-    const descFolio = (paymentMethod === 'Card' || paymentMethod === 'Transfer') && folioNumber.trim() ? ` [Folio: ${folioNumber.trim()}]` : '';
-
-    applyCashDelta(selectedBranchId, paymentMethod === 'Cash' ? cartValues.total : 0, [{
-      type: 'Venta',
-      amount: cartValues.total,
-      description: `Venta ${newSale.id} - ${paymentLabel}${descFolio}${branchNameSuffix}`,
-      time: new Date().toLocaleTimeString(),
-      createdAt: Date.now(),
-      branchId: selectedBranchId
-    }]);
-
-    // 5. Save the new sale record (only this single new doc gets written/diffed)
-    const newSales = [newSale, ...sales];
-    saveAllData(products, customers, newSales, cashRegister);
+      requiresInvoice
+    });
 
     // Reset checkout states and triggers success receipt modal
     setLastCompletedSale(newSale);
