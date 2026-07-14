@@ -1,65 +1,269 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Users, 
   Coffee, 
   Clock, 
   User, 
-  Filter, 
   DollarSign,
   CheckCircle2,
   AlertCircle,
   HelpCircle,
   Plus
 } from 'lucide-react';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 
 interface Table {
   id: string;
-  number: string;
-  status: 'available' | 'occupied' | 'reserved';
-  capacity: number;
-  currentOrderTotal?: number;
-  waiterName?: string;
-  shape: 'round' | 'square';
-  zone: 'Principal' | 'Terraza' | 'Bar/VIP';
-  elapsedMinutes?: number;
-  customerName?: string;
+  name: string;
+  branchId: string;
+  capacity?: number;
+  status: 'libre' | 'ocupada' | 'por_cobrar';
+  currentOrderId?: string;
+  shape?: 'round' | 'square';
+  zone?: string;
 }
 
-const MOCK_TABLES: Table[] = [
-  { id: 't1', number: '1', status: 'available', capacity: 4, shape: 'square', zone: 'Principal' },
-  { id: 't2', number: '2', status: 'occupied', capacity: 2, currentOrderTotal: 345, waiterName: 'Carlos M.', shape: 'round', zone: 'Principal', elapsedMinutes: 45, customerName: 'Familia Perez' },
-  { id: 't3', number: '3', status: 'available', capacity: 6, shape: 'square', zone: 'Principal' },
-  { id: 't4', number: '4', status: 'reserved', capacity: 4, waiterName: 'Sofía R.', shape: 'square', zone: 'Principal', customerName: 'Mesa de Negocios' },
-  { id: 't5', number: '5', status: 'occupied', capacity: 8, currentOrderTotal: 1280, waiterName: 'Carlos M.', shape: 'square', zone: 'Principal', elapsedMinutes: 75, customerName: 'Cumpleaños Pedro' },
-  { id: 't6', number: '6', status: 'available', capacity: 2, shape: 'round', zone: 'Principal' },
-  
-  { id: 't7', number: '10', status: 'available', capacity: 4, shape: 'square', zone: 'Terraza' },
-  { id: 't8', number: '11', status: 'occupied', capacity: 4, currentOrderTotal: 620, waiterName: 'Sofía R.', shape: 'round', zone: 'Terraza', elapsedMinutes: 30, customerName: 'Ana Gomez' },
-  { id: 't9', number: '12', status: 'occupied', capacity: 6, currentOrderTotal: 490, waiterName: 'Luis P.', shape: 'square', zone: 'Terraza', elapsedMinutes: 15, customerName: 'Marta Soler' },
-  { id: 't10', number: '13', status: 'reserved', capacity: 4, waiterName: 'Luis P.', shape: 'round', zone: 'Terraza', customerName: 'Cena Pareja' },
-  
-  { id: 't11', number: 'B1', status: 'occupied', capacity: 2, currentOrderTotal: 150, waiterName: 'Diana T.', shape: 'round', zone: 'Bar/VIP', elapsedMinutes: 10, customerName: 'Bar C-1' },
-  { id: 't12', number: 'B2', status: 'available', capacity: 2, shape: 'round', zone: 'Bar/VIP' },
-  { id: 't13', number: 'V1', status: 'reserved', capacity: 10, waiterName: 'Diana T.', shape: 'square', zone: 'Bar/VIP', customerName: 'Reserva Especial VIP' },
-];
+interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  destination: 'cocina' | 'barra' | 'ninguno';
+  round: number;
+  sentAt?: string;
+}
 
-export default function TablesFloorView() {
+interface Order {
+  id: string;
+  tableId: string;
+  branchId: string;
+  status: 'open' | 'closed';
+  waiterId: string;
+  waiterName: string;
+  openedAt: string;
+  items: OrderItem[];
+  closedAt?: string;
+  saleId?: string;
+}
+
+interface TablesFloorViewProps {
+  tables: Table[];
+  orders: Order[];
+  selectedBranchId: string;
+  activeBranchName: string;
+  activeCompanyId: string;
+  currentUserMember: any;
+  user: any;
+  onManageOrder: (table: Table) => void;
+}
+
+const formatMXN = (val: number): string => {
+  if (isNaN(val) || val === undefined || val === null) return '$0.00 MXN';
+  return `$${val.toFixed(2)} MXN`;
+};
+
+export default function TablesFloorView({
+  tables,
+  orders,
+  selectedBranchId,
+  activeBranchName,
+  activeCompanyId,
+  currentUserMember,
+  user,
+  onManageOrder
+}: TablesFloorViewProps) {
   const [selectedZone, setSelectedZone] = useState<'Todas' | 'Principal' | 'Terraza' | 'Bar/VIP'>('Todas');
-  const [selectedStatus, setSelectedStatus] = useState<'All' | 'available' | 'occupied' | 'reserved'>('All');
+  const [selectedStatus, setSelectedStatus] = useState<'All' | 'libre' | 'ocupada' | 'por_cobrar'>('All');
   const [activeTable, setActiveTable] = useState<Table | null>(null);
 
-  // Filter logic
-  const filteredTables = MOCK_TABLES.filter(t => {
-    const matchesZone = selectedZone === 'Todas' || t.zone === selectedZone;
-    const matchesStatus = selectedStatus === 'All' || t.status === selectedStatus;
-    return matchesZone && matchesStatus;
+  // States for Add Table Modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newTableName, setNewTableName] = useState('');
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const [newTableZone, setNewTableZone] = useState<'Principal' | 'Terraza' | 'Bar/VIP'>('Principal');
+  const [newTableShape, setNewTableShape] = useState<'square' | 'round'>('square');
+
+  // State for Custom Confirm Modal
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
   });
 
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
+
+  // Filter tables by branch
+  const branchTables = useMemo(() => {
+    return tables.filter(t => t.branchId === selectedBranchId);
+  }, [tables, selectedBranchId]);
+
+  // Map active orders by table ID
+  const activeOrdersMap = useMemo(() => {
+    const map = new Map<string, Order>();
+    orders.forEach(o => {
+      if (o.status === 'open' && o.branchId === selectedBranchId) {
+        map.set(o.tableId, o);
+      }
+    });
+    return map;
+  }, [orders, selectedBranchId]);
+
+  // Find current selected table's active order
+  const selectedTableOrder = useMemo(() => {
+    if (!activeTable) return null;
+    return activeOrdersMap.get(activeTable.id) || null;
+  }, [activeTable, activeOrdersMap]);
+
+  // Filter logic for grid
+  const filteredTables = useMemo(() => {
+    return branchTables.filter(t => {
+      // Determine zone (default to 'Principal' if missing)
+      const tableZone = t.zone || 'Principal';
+      const matchesZone = selectedZone === 'Todas' || tableZone === selectedZone;
+      const matchesStatus = selectedStatus === 'All' || t.status === selectedStatus;
+      return matchesZone && matchesStatus;
+    });
+  }, [branchTables, selectedZone, selectedStatus]);
+
   // Calculate statistics
-  const totalTables = MOCK_TABLES.length;
-  const availableCount = MOCK_TABLES.filter(t => t.status === 'available').length;
-  const occupiedCount = MOCK_TABLES.filter(t => t.status === 'occupied').length;
-  const reservedCount = MOCK_TABLES.filter(t => t.status === 'reserved').length;
+  const totalTables = branchTables.length;
+  const availableCount = branchTables.filter(t => t.status === 'libre').length;
+  const occupiedCount = branchTables.filter(t => t.status === 'ocupada').length;
+  const reservedCount = branchTables.filter(t => t.status === 'por_cobrar').length;
+
+  // Open Table / Create Order directly
+  const handleOpenTable = async (tableToOpen: Table) => {
+    if (!activeCompanyId) return;
+    const orderId = 'ord_' + Math.floor(Math.random() * 900000 + 100000);
+    const newOrder: Order = {
+      id: orderId,
+      tableId: tableToOpen.id,
+      branchId: selectedBranchId,
+      status: 'open',
+      waiterId: user.uid,
+      waiterName: currentUserMember?.name || 'Mesero',
+      openedAt: new Date().toISOString(),
+      items: []
+    };
+
+    try {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'companies', activeCompanyId, 'orders', orderId), newOrder);
+      batch.update(doc(db, 'companies', activeCompanyId, 'tables', tableToOpen.id), {
+        status: 'ocupada',
+        currentOrderId: orderId
+      });
+      await batch.commit();
+
+      const updatedTable: Table = {
+        ...tableToOpen,
+        status: 'ocupada',
+        currentOrderId: orderId
+      };
+      setActiveTable(updatedTable);
+      onManageOrder(updatedTable);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `companies/${activeCompanyId}/orders/${orderId}`);
+    }
+  };
+
+  // Release table without charge
+  const handleReleaseTable = async (tableToRelease: Table) => {
+    if (!activeCompanyId) return;
+    const orderToClose = activeOrdersMap.get(tableToRelease.id);
+
+    showConfirm(
+      '¿Liberar Mesa sin Cobro?',
+      `¿Estás seguro de liberar la ${tableToRelease.name}? Se cerrará la comanda activa de forma permanente sin registrar ningún cobro en caja.`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          if (orderToClose) {
+            batch.update(doc(db, 'companies', activeCompanyId, 'orders', orderToClose.id), {
+              status: 'closed',
+              closedAt: new Date().toISOString()
+            });
+          }
+          batch.update(doc(db, 'companies', activeCompanyId, 'tables', tableToRelease.id), {
+            status: 'libre',
+            currentOrderId: null
+          });
+          await batch.commit();
+          setActiveTable(null);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `companies/${activeCompanyId}/tables/${tableToRelease.id}`);
+        }
+      }
+    );
+  };
+
+  // Add table submit handler
+  const handleSubmitAddTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCompanyId) return;
+    if (!newTableName.trim()) return;
+
+    const tableId = 'tab_' + Math.floor(Math.random() * 900000 + 100000);
+    const newTable: Table = {
+      id: tableId,
+      name: newTableName.trim(),
+      branchId: selectedBranchId,
+      capacity: newTableCapacity,
+      status: 'libre',
+      shape: newTableShape,
+      zone: newTableZone
+    };
+
+    try {
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'companies', activeCompanyId, 'tables', tableId), newTable);
+      
+      setNewTableName('');
+      setNewTableCapacity(4);
+      setNewTableZone('Principal');
+      setNewTableShape('square');
+      setIsAddModalOpen(false);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `companies/${activeCompanyId}/tables/${tableId}`);
+    }
+  };
+
+  // Delete table handler
+  const handleDeleteTable = async (tableToDelete: Table) => {
+    if (!activeCompanyId) return;
+    if (tableToDelete.status !== 'libre') {
+      alert('Solo se pueden eliminar mesas que estén en estado Libre.');
+      return;
+    }
+
+    showConfirm(
+      '¿Eliminar Mesa?',
+      `¿Estás seguro de eliminar permanentemente la ${tableToDelete.name}? Esta acción no se puede deshacer y borrará la mesa del salón de forma definitiva.`,
+      async () => {
+        try {
+          const { deleteDoc } = await import('firebase/firestore');
+          await deleteDoc(doc(db, 'companies', activeCompanyId, 'tables', tableToDelete.id));
+          setActiveTable(null);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `companies/${activeCompanyId}/tables/${tableToDelete.id}`);
+        }
+      }
+    );
+  };
 
   return (
     <div className="p-6 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 flex flex-col space-y-6">
@@ -71,15 +275,15 @@ export default function TablesFloorView() {
             <Coffee className="w-6 h-6 text-[var(--brand-primary,#6366f1)]" />
             <span>Plano de Mesas y Salón</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Visualiza y gestiona las comandas, estados y distribución táctil de las mesas.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Visualiza y gestiona las comandas, estados y distribución táctil de las mesas para <strong className="text-[var(--brand-primary,#6366f1)]">{activeBranchName}</strong>.
           </p>
         </div>
 
         {/* Action button */}
         <button
           type="button"
-          onClick={() => alert('Próximamente: Integración para agregar mesas y zonas dinámicas')}
+          onClick={() => setIsAddModalOpen(true)}
           className="px-4 py-2.5 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition select-none active:scale-95"
         >
           <Plus className="w-4 h-4" />
@@ -94,15 +298,15 @@ export default function TablesFloorView() {
             <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Total Mesas</p>
             <h4 className="text-xl font-black mt-1">{totalTables}</h4>
           </div>
-          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center font-bold text-slate-500 text-sm">
+          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-850 rounded-xl flex items-center justify-center font-bold text-slate-500 text-sm">
             📊
           </div>
         </div>
 
         <button
-          onClick={() => setSelectedStatus(selectedStatus === 'available' ? 'All' : 'available')}
+          onClick={() => setSelectedStatus(selectedStatus === 'libre' ? 'All' : 'libre')}
           className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'available' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+            selectedStatus === 'libre' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
           }`}
         >
           <div>
@@ -115,9 +319,9 @@ export default function TablesFloorView() {
         </button>
 
         <button
-          onClick={() => setSelectedStatus(selectedStatus === 'occupied' ? 'All' : 'occupied')}
+          onClick={() => setSelectedStatus(selectedStatus === 'ocupada' ? 'All' : 'ocupada')}
           className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'occupied' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+            selectedStatus === 'ocupada' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
           }`}
         >
           <div>
@@ -130,13 +334,13 @@ export default function TablesFloorView() {
         </button>
 
         <button
-          onClick={() => setSelectedStatus(selectedStatus === 'reserved' ? 'All' : 'reserved')}
+          onClick={() => setSelectedStatus(selectedStatus === 'por_cobrar' ? 'All' : 'por_cobrar')}
           className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'reserved' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+            selectedStatus === 'por_cobrar' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
           }`}
         >
           <div>
-            <p className="text-[10px] uppercase font-black tracking-wider text-amber-500">Reservadas</p>
+            <p className="text-[10px] uppercase font-black tracking-wider text-amber-500">Por Cobrar</p>
             <h4 className="text-xl font-black mt-1 text-amber-600 dark:text-amber-400">{reservedCount}</h4>
           </div>
           <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center">
@@ -175,7 +379,7 @@ export default function TablesFloorView() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Reservada</span>
+            <span>Por Cobrar</span>
           </div>
         </div>
       </div>
@@ -208,20 +412,29 @@ export default function TablesFloorView() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
               {filteredTables.map(table => {
                 const isSelected = activeTable?.id === table.id;
-                
+                const tableOrder = activeOrdersMap.get(table.id);
+                const orderTotal = tableOrder
+                  ? tableOrder.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+                  : 0;
+
                 // Color variations based on status
                 let statusClasses = '';
                 let statusColor = '';
-                if (table.status === 'available') {
+                if (table.status === 'libre') {
                   statusClasses = 'border-emerald-200 dark:border-emerald-950/60 bg-emerald-50/50 dark:bg-emerald-950/10 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300';
                   statusColor = 'var(--color-emerald-500)';
-                } else if (table.status === 'occupied') {
+                } else if (table.status === 'ocupada') {
                   statusClasses = 'border-rose-200 dark:border-rose-950/60 bg-rose-50/50 dark:bg-rose-950/10 hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-800 dark:text-rose-350';
                   statusColor = 'var(--color-rose-500)';
-                } else if (table.status === 'reserved') {
+                } else if (table.status === 'por_cobrar') {
                   statusClasses = 'border-amber-200 dark:border-amber-950/60 bg-amber-50/50 dark:bg-amber-950/10 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-800 dark:text-amber-350';
                   statusColor = 'var(--color-amber-500)';
                 }
+
+                // Determine shape
+                const shape = table.shape || 'square';
+                // Determine zone
+                const zone = table.zone || 'Principal';
 
                 return (
                   <button
@@ -233,12 +446,12 @@ export default function TablesFloorView() {
                   >
                     {/* Top Row: Mesa ID / Zone Badge */}
                     <div className="flex justify-between items-center w-full">
-                      <span className="text-xs bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2 py-0.5 rounded-lg text-slate-500 font-extrabold shadow-sm">
-                        {table.zone}
+                      <span className="text-[9px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2 py-0.5 rounded-lg text-slate-500 font-extrabold shadow-sm">
+                        {zone}
                       </span>
                       <span 
                         className={`w-2.5 h-2.5 rounded-full ${
-                          table.status === 'occupied' ? 'animate-pulse' : ''
+                          table.status === 'ocupada' ? 'animate-pulse' : ''
                         }`}
                         style={{ backgroundColor: statusColor }}
                       />
@@ -248,46 +461,39 @@ export default function TablesFloorView() {
                     <div className="flex justify-center items-center my-1.5 flex-1 relative">
                       <div 
                         className={`w-16 h-16 flex flex-col items-center justify-center shadow-inner relative transition duration-300 ${
-                          table.shape === 'round' ? 'rounded-full' : 'rounded-2xl'
+                          shape === 'round' ? 'rounded-full' : 'rounded-2xl'
                         } ${
-                          table.status === 'occupied' 
+                          table.status === 'ocupada' 
                             ? 'bg-rose-100 dark:bg-rose-900/30' 
-                            : table.status === 'reserved'
+                            : table.status === 'por_cobrar'
                             ? 'bg-amber-100 dark:bg-amber-900/30'
                             : 'bg-emerald-100 dark:bg-emerald-900/30'
                         }`}
                       >
-                        <span className="text-lg font-black">{table.number}</span>
-                        {/* Little capacity visual dots on outer layout */}
+                        <span className="text-base font-black">{table.name}</span>
+                        {/* Capacity visual dots */}
                         <div className="absolute -top-1 px-1 bg-white dark:bg-slate-900 rounded-full border border-slate-150 dark:border-slate-800 text-[8px] font-black text-slate-500 flex items-center gap-0.5 shadow-sm">
                           <Users className="w-2 h-2" />
-                          <span>{table.capacity}</span>
+                          <span>{table.capacity || 4}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Bottom Row: Detail/Total */}
                     <div className="w-full flex justify-between items-end">
-                      {table.status === 'occupied' ? (
+                      {table.status !== 'libre' && tableOrder ? (
                         <>
                           <div className="leading-none">
-                            <p className="text-[8px] uppercase font-black text-slate-400">Comanda</p>
-                            <p className="text-xs font-black text-slate-800 dark:text-slate-100">
-                              ${table.currentOrderTotal}
+                            <p className="text-[8px] uppercase font-black text-slate-400">Total</p>
+                            <p className="text-xs font-black text-slate-850 dark:text-slate-150">
+                              {formatMXN(orderTotal)}
                             </p>
                           </div>
                           <div className="flex items-center gap-0.5 text-slate-400 text-[9px] font-bold">
                             <Clock className="w-2.5 h-2.5" />
-                            <span>{table.elapsedMinutes}m</span>
+                            <span>{Math.floor((Date.now() - Date.parse(tableOrder.openedAt)) / 60000)}m</span>
                           </div>
                         </>
-                      ) : table.status === 'reserved' ? (
-                        <div className="truncate pr-1">
-                          <p className="text-[8px] uppercase font-black text-slate-400">Reserva</p>
-                          <p className="text-[10px] font-extrabold truncate text-amber-700 dark:text-amber-400">
-                            {table.customerName || 'Pendiente'}
-                          </p>
-                        </div>
                       ) : (
                         <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
                           Disponible
@@ -312,9 +518,9 @@ export default function TablesFloorView() {
                   <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
                     <div>
                       <h4 className="text-base font-black tracking-tight flex items-center gap-1.5">
-                        <span>Mesa {activeTable.number}</span>
+                        <span>{activeTable.name}</span>
                         <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500">
-                          {activeTable.zone}
+                          {activeTable.zone || 'Principal'}
                         </span>
                       </h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Detalle Operativo</p>
@@ -331,86 +537,81 @@ export default function TablesFloorView() {
                   <div 
                     className="p-3.5 rounded-2xl flex items-center gap-3 border shadow-inner"
                     style={{
-                      backgroundColor: activeTable.status === 'occupied' 
+                      backgroundColor: activeTable.status === 'ocupada' 
                         ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 6%, white)'
-                        : activeTable.status === 'reserved'
+                        : activeTable.status === 'por_cobrar'
                         ? 'bg-amber-50/50'
                         : 'color-mix(in srgb, var(--brand-primary, #6366f1) 6%, white)',
-                      borderColor: activeTable.status === 'occupied'
+                      borderColor: activeTable.status === 'ocupada'
                         ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 12%, transparent)'
-                        : activeTable.status === 'reserved'
+                        : activeTable.status === 'por_cobrar'
                         ? 'var(--color-amber-100)'
                         : 'color-mix(in srgb, var(--brand-primary, #6366f1) 12%, transparent)'
                     }}
                   >
                     <span className="text-2xl">
-                      {activeTable.status === 'occupied' ? '🍽️' : activeTable.status === 'reserved' ? '📅' : '🟢'}
+                      {activeTable.status === 'ocupada' ? '🍽️' : activeTable.status === 'por_cobrar' ? '💰' : '🟢'}
                     </span>
                     <div>
                       <h5 className="text-xs font-black uppercase tracking-wide">
-                        {activeTable.status === 'occupied' ? 'Mesa Ocupada' : activeTable.status === 'reserved' ? 'Mesa Reservada' : 'Disponible / Libre'}
+                        {activeTable.status === 'ocupada' ? 'Mesa Ocupada' : activeTable.status === 'por_cobrar' ? 'Por Cobrar' : 'Disponible / Libre'}
                       </h5>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Capacidad de comensales: {activeTable.capacity} personas
+                        Capacidad de comensales: {activeTable.capacity || 4} personas
                       </p>
                     </div>
                   </div>
 
                   {/* Table details lists */}
                   <div className="space-y-3.5">
-                    {activeTable.customerName && (
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800">
-                        <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Cliente</span>
-                        <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 mt-0.5 block">{activeTable.customerName}</span>
-                      </div>
-                    )}
-
-                    {activeTable.waiterName && (
+                    {selectedTableOrder && (
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-[var(--brand-primary,#6366f1)]/10 text-[var(--brand-primary,#6366f1)] flex items-center justify-center">
                           <User className="w-4 h-4" />
                         </div>
                         <div>
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Mesero Asignado</span>
-                          <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">{activeTable.waiterName}</span>
+                          <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                            {selectedTableOrder.waiterName}
+                          </span>
                         </div>
                       </div>
                     )}
 
-                    {activeTable.status === 'occupied' && (
+                    {activeTable.status !== 'libre' && selectedTableOrder && (
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800">
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Monto Cuenta</span>
-                          <span className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 block">${activeTable.currentOrderTotal}</span>
+                          <span className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 block">
+                            {formatMXN(selectedTableOrder.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0))}
+                          </span>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800">
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Tiempo Transcurrido</span>
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-0.5 block flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 inline text-slate-400" />
-                            {activeTable.elapsedMinutes} min
+                            {Math.floor((Date.now() - Date.parse(selectedTableOrder.openedAt)) / 60000)} min
                           </span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Mock Active items in current order */}
-                  {activeTable.status === 'occupied' && (
+                  {/* Real Active items in current order */}
+                  {activeTable.status !== 'libre' && selectedTableOrder && selectedTableOrder.items.length > 0 && (
                     <div className="space-y-2 mt-4">
-                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Artículos Consumidos (Pre-Comanda)</span>
-                      <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                        <div className="p-2.5 flex justify-between bg-slate-50/50 dark:bg-slate-800/20">
-                          <span className="font-semibold">2x Pizza Especial Napolitana</span>
-                          <span className="font-extrabold text-slate-650 dark:text-slate-300">$640</span>
-                        </div>
-                        <div className="p-2.5 flex justify-between bg-slate-50/50 dark:bg-slate-800/20">
-                          <span className="font-semibold">1x Pasta Alfredo con Pollo</span>
-                          <span className="font-extrabold text-slate-650 dark:text-slate-300">$280</span>
-                        </div>
-                        <div className="p-2.5 flex justify-between bg-slate-50/50 dark:bg-slate-800/20">
-                          <span className="font-semibold">4x Cervezas Premium Importadas</span>
-                          <span className="font-extrabold text-slate-650 dark:text-slate-300">$360</span>
-                        </div>
+                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Artículos Consumidos</span>
+                      <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 text-xs max-h-[160px] overflow-y-auto">
+                        {selectedTableOrder.items.map((item, idx) => (
+                          <div key={idx} className="p-2.5 flex justify-between bg-slate-50/50 dark:bg-slate-800/20">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              {item.quantity}x {item.name}
+                            </span>
+                            <span className="font-extrabold text-slate-850 dark:text-white">
+                              {formatMXN(item.unitPrice * item.quantity)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -418,61 +619,63 @@ export default function TablesFloorView() {
 
                 {/* Bottom Action buttons */}
                 <div className="space-y-2.5 pt-5 border-t border-slate-100 dark:border-slate-800 mt-5">
-                  {activeTable.status === 'available' ? (
+                  {activeTable.status === 'libre' ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        alert(`Abriendo Comanda para Mesa ${activeTable.number}`);
-                        setActiveTable(prev => prev ? { ...prev, status: 'occupied', currentOrderTotal: 0, waiterName: 'Carlos M.' } : null);
-                      }}
+                      onClick={() => handleOpenTable(activeTable)}
                       className="w-full py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
                     >
                       Apertura de Mesa 🍽️
                     </button>
-                  ) : activeTable.status === 'occupied' ? (
-                    <div className="flex gap-2.5">
+                  ) : (
+                    <div className="flex flex-col gap-2">
                       <button
                         type="button"
-                        onClick={() => alert('Abriendo Catálogo para adicionar platillos...')}
-                        className="flex-1 py-3 bg-slate-800 hover:bg-slate-900 active:scale-98 text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center"
+                        onClick={() => onManageOrder(activeTable)}
+                        className="w-full py-3 bg-slate-850 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider"
                       >
-                        + Adicionar
+                        📂 Gestionar Comanda / Cobrar
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          alert(`Mesa ${activeTable.number} liberada (Venta completada de $${activeTable.currentOrderTotal})`);
-                          setActiveTable(prev => prev ? { ...prev, status: 'available', currentOrderTotal: undefined, waiterName: undefined, customerName: undefined } : null);
+                          const nextStatus = activeTable.status === 'ocupada' ? 'por_cobrar' : 'ocupada';
+                          updateDoc(doc(db, 'companies', activeCompanyId, 'tables', activeTable.id), {
+                            status: nextStatus
+                          }).then(() => {
+                            setActiveTable(prev => prev ? { ...prev, status: nextStatus } : null);
+                          }).catch(err => {
+                            handleFirestoreError(err, OperationType.UPDATE, `companies/${activeCompanyId}/tables/${activeTable.id}`);
+                          });
                         }}
-                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center"
+                        className={`w-full py-2 border rounded-xl text-xs font-black text-center transition cursor-pointer uppercase tracking-wider ${
+                          activeTable.status === 'ocupada'
+                            ? 'border-amber-300 bg-amber-50/30 text-amber-700 hover:bg-amber-50'
+                            : 'border-rose-300 bg-rose-50/30 text-rose-700 hover:bg-rose-50'
+                        }`}
                       >
-                        Cobrar Mesa 💰
+                        {activeTable.status === 'ocupada' ? '⚠️ Marcar Por Cobrar' : '🍽️ Regresar a Ocupada'}
                       </button>
                     </div>
-                  ) : (
+                  )}
+
+                  {activeTable.status !== 'libre' && (
                     <button
                       type="button"
-                      onClick={() => {
-                        alert(`Mesa ${activeTable.number} ocupada por llegada de reserva`);
-                        setActiveTable(prev => prev ? { ...prev, status: 'occupied', currentOrderTotal: 0, waiterName: 'Luis P.' } : null);
-                      }}
-                      className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
+                      onClick={() => handleReleaseTable(activeTable)}
+                      className="w-full py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide"
                     >
-                      Registrar Entrada de Reserva
+                      Liberar sin Cobro / Cancelar
                     </button>
                   )}
 
-                  {activeTable.status !== 'available' && (
+                  {activeTable.status === 'libre' && (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm(`¿Estás seguro de liberar y limpiar la Mesa ${activeTable.number}?`)) {
-                          setActiveTable(prev => prev ? { ...prev, status: 'available', currentOrderTotal: undefined, waiterName: undefined, customerName: undefined } : null);
-                        }
-                      }}
-                      className="w-full py-2.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide"
+                      onClick={() => handleDeleteTable(activeTable)}
+                      className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide border border-red-200"
                     >
-                      Liberar sin Cobro / Cancelar
+                      🗑️ Eliminar Mesa del Salón
                     </button>
                   )}
                 </div>
@@ -491,6 +694,139 @@ export default function TablesFloorView() {
         </div>
 
       </div>
+
+      {/* Premium Add Table Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span>🍽️ Crear Nueva Mesa</span>
+              </h3>
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-extrabold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAddTable} className="space-y-4 pt-4">
+              {/* Name */}
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Nombre / Identificador</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Mesa 12, Barra 2"
+                  value={newTableName}
+                  onChange={e => setNewTableName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Capacity */}
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Capacidad</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    required
+                    value={newTableCapacity}
+                    onChange={e => setNewTableCapacity(parseInt(e.target.value) || 4)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white"
+                  />
+                </div>
+
+                {/* Shape */}
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Forma</label>
+                  <select
+                    value={newTableShape}
+                    onChange={e => setNewTableShape(e.target.value as 'square' | 'round')}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white cursor-pointer"
+                  >
+                    <option value="square">Cuadrada ⬜</option>
+                    <option value="round">Redonda ⚪</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Zone */}
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Zona del Salón</label>
+                <select
+                  value={newTableZone}
+                  onChange={e => setNewTableZone(e.target.value as 'Principal' | 'Terraza' | 'Bar/VIP')}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white cursor-pointer"
+                >
+                  <option value="Principal">Principal 🛋️</option>
+                  <option value="Terraza">Terraza 🌿</option>
+                  <option value="Bar/VIP">Bar / VIP 🍸</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] text-white text-xs font-black rounded-xl uppercase tracking-wider shadow-md transition cursor-pointer text-center active:scale-95"
+                >
+                  Guardar Mesa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Confirm Dialog Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/50 text-xl font-bold">
+                ⚠️
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wide">
+                  {confirmModal.title}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                  {confirmModal.message}
+                </p>
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  }}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl uppercase tracking-wider shadow-md transition cursor-pointer text-center active:scale-95"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

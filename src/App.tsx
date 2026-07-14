@@ -38,7 +38,10 @@ import {
   Download,
   Printer,
   LayoutGrid,
-  List
+  List,
+  Utensils,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
@@ -111,6 +114,8 @@ import CompanySettingsView from './components/CompanySettingsView';
 import AuditView from './components/AuditView';
 import WaiterShell from './components/WaiterShell';
 import EmployeePinLogin from './components/EmployeePinLogin';
+import TablesFloorView from './components/TablesFloorView';
+import ComandaView from './components/ComandaView';
 
 // UTF-8-safe string → base64 (plain btoa() mangles accented characters like á/é/í/ó/ú/ñ).
 const utf8ToBase64 = (str: string): string =>
@@ -417,9 +422,32 @@ export const getAvailableMonths = (allSales: Sale[]): string[] => {
 };
 
 export default function App() {
-  // Tabs: 'pos' | 'products' | 'customers' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing'
-  const [activeTab, setActiveTab] = useState<'pos' | 'products' | 'customers' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing' | 'audit'>('pos');
+  // Tabs: 'pos' | 'products' | 'customers' | 'tables' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing'
+  const [activeTab, setActiveTab] = useState<'pos' | 'products' | 'customers' | 'tables' | 'history' | 'analytics' | 'branches' | 'suppliers' | 'settings' | 'invoicing' | 'audit'>('pos');
   const [branding, setBranding] = useState<Branding>({});
+
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('logicpos_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (themeMode === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('logicpos_theme', themeMode);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [themeMode]);
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
 
   // Selected Bluetooth thermal printer (e.g. MERION PT-B1). Tied to this physical device, not
@@ -699,8 +727,11 @@ export default function App() {
 
   // Multi-Company States
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [activeCompany, setActiveCompany] = useState<Company | null>(null);
   const [userCompanies, setUserCompanies] = useState<{ [id: string]: { id: string; name: string; role: 'owner' | 'master_admin' | 'admin' | 'employee' | 'mesero' } }>({});
   const [currentUserMember, setCurrentUserMember] = useState<any | null>(null);
+  const [dashboardSelectedTable, setDashboardSelectedTable] = useState<Table | null>(null);
+  const [dashboardIsManagingOrder, setDashboardIsManagingOrder] = useState<boolean>(false);
   const [folioNumber, setFolioNumber] = useState('');
 
   // Hard States
@@ -1259,6 +1290,7 @@ export default function App() {
 
     if (!activeCompanyId) {
       // Clean display till company is picked
+      setActiveCompany(null);
       setProducts([]);
       setCustomers([]);
       setBranches([]);
@@ -1271,6 +1303,16 @@ export default function App() {
 
     // Connect real-time Firestore synchronization feeds
     const compId = activeCompanyId;
+
+    const unsubCompanyDoc = onSnapshot(doc(db, 'companies', compId), (snapshot) => {
+      if (snapshot.exists()) {
+        setActiveCompany(snapshot.data() as Company);
+      } else {
+        setActiveCompany(null);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `companies/${compId}`);
+    });
 
     const unsubProducts = onSnapshot(collection(db, 'companies', compId, 'products'), (snapshot) => {
       const list: Product[] = [];
@@ -1403,6 +1445,7 @@ export default function App() {
     if (savedActiveBranch) setSelectedBranchId(savedActiveBranch);
 
     return () => {
+      unsubCompanyDoc();
       unsubProducts();
       unsubCustomers();
       unsubBranches();
@@ -3336,13 +3379,16 @@ export default function App() {
         branches={branches}
         tables={tables}
         orders={orders}
+        customers={customers}
         selectedBranchId={selectedBranchId}
         branding={branding}
         onLogout={() => signOut(auth)}
+        buildAndCommitSale={buildAndCommitSale}
         userAvailableCompanies={userCompanies}
         onLeaveCompany={() => {
           localStorage.removeItem(`logic_active_company_${user.uid}`);
           setActiveCompanyId(null);
+          setActiveCompany(null);
         }}
       />
     );
@@ -3434,6 +3480,15 @@ export default function App() {
               <p className="text-[9px] leading-none truncate max-w-[120px]" style={{ color: 'color-mix(in srgb, var(--brand-primary) 70%, white)' }}>{user.email}</p>
             </div>
             <div className="flex space-x-1 lg:space-x-1.5 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark')}
+                className="p-1.5 rounded-lg text-white cursor-pointer transition select-none border flex items-center justify-center"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--brand-dark) 70%, black)', borderColor: 'color-mix(in srgb, var(--brand-primary) 35%, transparent)' }}
+                title={themeMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              >
+                {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
+              </button>
               <button
                 onClick={() => { localStorage.removeItem(`logic_active_company_${user.uid}`); setActiveCompanyId(null); }}
                 className="text-[9px] lg:text-[10px] text-white font-bold px-2 lg:px-2.5 py-1 rounded-lg cursor-pointer transition select-none border"
@@ -3532,6 +3587,9 @@ export default function App() {
           
           {[
             { id: 'pos',        label: 'Terminal POS',       icon: <ShoppingCart className="w-5 h-5" /> },
+            ...(activeCompany?.businessType === 'restaurante' ? [
+              { id: 'tables',   label: 'Mesas / Salón',       icon: <Utensils className="w-5 h-5" /> }
+            ] : []),
             { id: 'products',   label: 'Inventario',          icon: <Package className="w-5 h-5" /> },
             { id: 'customers',  label: 'Clientes',            icon: <Users className="w-5 h-5" /> },
           ].map(({ id, label, icon }) => (
@@ -4265,6 +4323,41 @@ export default function App() {
               </div>
             </div>
           </div>
+          )}
+
+          {/* SCREEN: TABLES FLOOR VIEW & COMANDA VIEW */}
+          {activeTab === 'tables' && activeCompany?.businessType === 'restaurante' && (
+            dashboardIsManagingOrder && dashboardSelectedTable ? (
+              <ComandaView
+                table={dashboardSelectedTable}
+                order={orders.find(o => o.tableId === dashboardSelectedTable.id && o.status === 'open' && o.branchId === selectedBranchId) || null}
+                products={products}
+                customers={customers}
+                activeCompanyId={activeCompanyId}
+                selectedBranchId={selectedBranchId}
+                currentUserMember={currentUserMember}
+                user={user}
+                buildAndCommitSale={buildAndCommitSale}
+                onClose={() => {
+                  setDashboardSelectedTable(null);
+                  setDashboardIsManagingOrder(false);
+                }}
+              />
+            ) : (
+              <TablesFloorView
+                tables={tables}
+                orders={orders}
+                selectedBranchId={selectedBranchId}
+                activeBranchName={branches.find(b => b.id === selectedBranchId)?.name || 'Sucursal Principal'}
+                activeCompanyId={activeCompanyId}
+                currentUserMember={currentUserMember}
+                user={user}
+                onManageOrder={(table) => {
+                  setDashboardSelectedTable(table);
+                  setDashboardIsManagingOrder(true);
+                }}
+              />
+            )
           )}
 
           {/* SCREEN: INVENTARIO DE PRODUCTOS */}
