@@ -88,6 +88,7 @@ interface WaiterShellProps {
   userAvailableCompanies?: any;
   onSwitchCompany?: (companyId: string) => void;
   onLeaveCompany?: () => void;
+  printConfig?: any;
 }
 
 const formatMXN = (val: number): string => {
@@ -111,7 +112,8 @@ export default function WaiterShell({
   buildAndCommitSale,
   userAvailableCompanies = {},
   onSwitchCompany,
-  onLeaveCompany
+  onLeaveCompany,
+  printConfig
 }: WaiterShellProps) {
   const [activeTab, setActiveTab] = useState<'tables' | 'my-orders'>('tables');
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
@@ -305,6 +307,7 @@ export default function WaiterShell({
                 setSelectedTable(null);
                 setIsManagingOrder(false);
               }}
+              printConfig={printConfig}
             />
           ) : (
             <TablesFloorView

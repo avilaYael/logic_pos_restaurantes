@@ -2303,7 +2303,8 @@ export default function App() {
     stock: '',
     minStock: '',
     sku: '',
-    supplierId: '' // Associated supplier link
+    supplierId: '', // Associated supplier link
+    printDestination: 'ninguno' as 'cocina' | 'barra' | 'ninguno'
   });
 
   // Quick add-stock ("Surtir") — adds units to the ACTIVE branch instead of overwriting
@@ -2356,7 +2357,8 @@ export default function App() {
         stock: getProductStock(product, selectedBranchId).toString(),
         minStock: product.minStock.toString(),
         sku: product.sku || '',
-        supplierId: product.supplierId || ''
+        supplierId: product.supplierId || '',
+        printDestination: product.printDestination || 'ninguno'
       });
     } else {
       setEditingProduct(null);
@@ -2368,7 +2370,8 @@ export default function App() {
         stock: '',
         minStock: '5',
         sku: '',
-        supplierId: ''
+        supplierId: '',
+        printDestination: 'ninguno'
       });
     }
     setIsProductModalOpen(true);
@@ -2402,6 +2405,7 @@ export default function App() {
             minStock: minStockNum,
             sku: prodForm.sku,
             supplierId: prodForm.supplierId || undefined,
+            printDestination: prodForm.printDestination || 'ninguno',
             branchStocks
           };
         }
@@ -2418,6 +2422,7 @@ export default function App() {
         minStock: minStockNum,
         sku: prodForm.sku || 'SKU-' + Math.floor(Math.random() * 900000),
         supplierId: prodForm.supplierId || undefined,
+        printDestination: prodForm.printDestination || 'ninguno',
         branchStocks: { [selectedBranchId]: stockNum }
       };
       updatedProducts = [...products, newProd];
@@ -3390,6 +3395,7 @@ export default function App() {
           setActiveCompanyId(null);
           setActiveCompany(null);
         }}
+        printConfig={printConfig}
       />
     );
   }
@@ -4342,6 +4348,7 @@ export default function App() {
                   setDashboardSelectedTable(null);
                   setDashboardIsManagingOrder(false);
                 }}
+                printConfig={printConfig}
               />
             ) : (
               <TablesFloorView
@@ -6027,6 +6034,21 @@ export default function App() {
                     ))}
                   </select>
                 </div>
+
+                {activeCompany?.businessType === 'restaurante' && (
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-bold text-slate-500 block">Destino de Impresión (Comandas)</label>
+                    <select
+                      value={prodForm.printDestination}
+                      onChange={e => setProdForm({ ...prodForm, printDestination: e.target.value as any })}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-semibold text-slate-700"
+                    >
+                      <option value="ninguno">Ninguno (No imprime comanda)</option>
+                      <option value="cocina">🍳 Cocina (Estación de cocina)</option>
+                      <option value="barra">🍹 Barra (Estación de barra / bebidas)</option>
+                    </select>
+                  </div>
+                )}
 
               </div>
 
