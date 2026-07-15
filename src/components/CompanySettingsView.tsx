@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, createCredentialUser } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { printEscPosOverNetwork } from '../lib/networkPrinter';
+import { buildTestPrint, columnsForPaperWidth } from '../lib/escpos';
 
 interface Member {
   userId: string;
@@ -61,6 +63,10 @@ interface PrintConfig {
   showLogo: boolean;
   showTaxLine: boolean;
   footerText: string;
+  kitchenPrinterIp?: string;
+  kitchenPrinterPort?: number;
+  barPrinterIp?: string;
+  barPrinterPort?: number;
 }
 
 interface BluetoothPrinterDevice {
@@ -231,7 +237,18 @@ export default function CompanySettingsView({
   const [printShowLogo, setPrintShowLogo] = useState(printConfig?.showLogo ?? true);
   const [printShowTaxLine, setPrintShowTaxLine] = useState(printConfig?.showTaxLine ?? true);
   const [printFooterText, setPrintFooterText] = useState(printConfig?.footerText ?? '¡Gracias por su compra!');
+  const [kitchenPrinterIp, setKitchenPrinterIp] = useState(printConfig?.kitchenPrinterIp ?? '');
+  const [kitchenPrinterPort, setKitchenPrinterPort] = useState(printConfig?.kitchenPrinterPort !== undefined ? String(printConfig.kitchenPrinterPort) : '');
+  const [barPrinterIp, setBarPrinterIp] = useState(printConfig?.barPrinterIp ?? '');
+  const [barPrinterPort, setBarPrinterPort] = useState(printConfig?.barPrinterPort !== undefined ? String(printConfig.barPrinterPort) : '');
   const [isSavingPrint, setIsSavingPrint] = useState(false);
+
+  // Restaurant businessType state
+  const [businessType, setBusinessType] = useState<'retail' | 'restaurante' | undefined>(undefined);
+
+  // Network printer test states
+  const [kitchenTesting, setKitchenTesting] = useState(false);
+  const [barTesting, setBarTesting] = useState(false);
 
   // Bluetooth thermal printer pairing (58/80mm ESC/POS, e.g. MERION PT-B1)
   const [btScanning, setBtScanning] = useState(false);
@@ -318,6 +335,10 @@ export default function CompanySettingsView({
     setPrintShowLogo(printConfig.showLogo ?? true);
     setPrintShowTaxLine(printConfig.showTaxLine ?? true);
     setPrintFooterText(printConfig.footerText ?? '¡Gracias por su compra!');
+    setKitchenPrinterIp(printConfig.kitchenPrinterIp ?? '');
+    setKitchenPrinterPort(printConfig.kitchenPrinterPort !== undefined ? String(printConfig.kitchenPrinterPort) : '');
+    setBarPrinterIp(printConfig.barPrinterIp ?? '');
+    setBarPrinterPort(printConfig.barPrinterPort !== undefined ? String(printConfig.barPrinterPort) : '');
   }, [printConfig]);
 
   const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
@@ -430,6 +451,44 @@ export default function CompanySettingsView({
     }
   };
 
+  const handleTestKitchenPrinter = async () => {
+    if (!kitchenPrinterIp.trim()) {
+      alert('Por favor ingrese la IP de la impresora de cocina primero.');
+      return;
+    }
+    setKitchenTesting(true);
+    try {
+      const port = kitchenPrinterPort.trim() ? parseInt(kitchenPrinterPort, 10) : 9100;
+      const columns = columnsForPaperWidth(printPaperWidth);
+      const bytes = buildTestPrint(columns);
+      await printEscPosOverNetwork(kitchenPrinterIp.trim(), port, bytes);
+      alert('¡Impresión de prueba enviada a Cocina!');
+    } catch (err: any) {
+      alert('Error de impresión: ' + (err.message || String(err)));
+    } finally {
+      setKitchenTesting(false);
+    }
+  };
+
+  const handleTestBarPrinter = async () => {
+    if (!barPrinterIp.trim()) {
+      alert('Por favor ingrese la IP de la impresora de barra primero.');
+      return;
+    }
+    setBarTesting(true);
+    try {
+      const port = barPrinterPort.trim() ? parseInt(barPrinterPort, 10) : 9100;
+      const columns = columnsForPaperWidth(printPaperWidth);
+      const bytes = buildTestPrint(columns);
+      await printEscPosOverNetwork(barPrinterIp.trim(), port, bytes);
+      alert('¡Impresión de prueba enviada a Barra!');
+    } catch (err: any) {
+      alert('Error de impresión: ' + (err.message || String(err)));
+    } finally {
+      setBarTesting(false);
+    }
+  };
+
   const handleSavePrintConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!onSavePrintConfig) return;
@@ -440,6 +499,10 @@ export default function CompanySettingsView({
         showLogo: printShowLogo,
         showTaxLine: printShowTaxLine,
         footerText: printFooterText.trim() || '¡Gracias por su compra!',
+        kitchenPrinterIp: kitchenPrinterIp.trim() || undefined,
+        kitchenPrinterPort: kitchenPrinterPort.trim() ? parseInt(kitchenPrinterPort, 10) : undefined,
+        barPrinterIp: barPrinterIp.trim() || undefined,
+        barPrinterPort: barPrinterPort.trim() ? parseInt(barPrinterPort, 10) : undefined,
       });
       alert('Configuración de impresión guardada.');
     } catch (err: any) {
@@ -685,6 +748,7 @@ export default function CompanySettingsView({
       if (snapshot.exists()) {
         const data = snapshot.data();
         setActiveCode(data.invitationCode || null);
+        setBusinessType(data.businessType);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `companies/${companyId}`);
@@ -1905,6 +1969,95 @@ export default function CompanySettingsView({
                   )}
 
                   {webError && <p className="text-[10px] text-red-500">{webError}</p>}
+                </div>
+              )}
+
+              {/* Impresoras de Red (Cocina y Barra) - Solo para restaurantes */}
+              {businessType === 'restaurante' && (
+                <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex items-center space-x-2">
+                    <Printer className="w-4 h-4 text-sky-500" />
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                      Estaciones de Impresión (Red / TCP)
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Configure las IPs de las impresoras térmicas conectadas a la red local (puerto por defecto 9100) para enviar las comandas de Cocina y Barra de forma automática.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Cocina */}
+                    <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-150 shadow-sm text-left">
+                      <h5 className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+                        <span>🍳 Estación Cocina</span>
+                        <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold uppercase">Cocina</span>
+                      </h5>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-500 block">Dirección IP</label>
+                        <input
+                          type="text"
+                          value={kitchenPrinterIp}
+                          onChange={e => setKitchenPrinterIp(e.target.value)}
+                          placeholder="Ej: 192.168.1.200"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-sky-400 transition"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-500 block">Puerto (por defecto 9100)</label>
+                        <input
+                          type="text"
+                          value={kitchenPrinterPort}
+                          onChange={e => setKitchenPrinterPort(e.target.value)}
+                          placeholder="9100"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-sky-400 transition"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleTestKitchenPrinter}
+                        disabled={kitchenTesting}
+                        className="w-full py-2 mt-1 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold text-[10px] rounded-lg transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {kitchenTesting ? 'Probando...' : 'Probar Impresora'}
+                      </button>
+                    </div>
+
+                    {/* Barra */}
+                    <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-150 shadow-sm text-left">
+                      <h5 className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+                        <span>🍹 Estación Barra</span>
+                        <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">Barra</span>
+                      </h5>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-500 block">Dirección IP</label>
+                        <input
+                          type="text"
+                          value={barPrinterIp}
+                          onChange={e => setBarPrinterIp(e.target.value)}
+                          placeholder="Ej: 192.168.1.201"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-sky-400 transition"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-500 block">Puerto (por defecto 9100)</label>
+                        <input
+                          type="text"
+                          value={barPrinterPort}
+                          onChange={e => setBarPrinterPort(e.target.value)}
+                          placeholder="9100"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-sky-400 transition"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleTestBarPrinter}
+                        disabled={barTesting}
+                        className="w-full py-2 mt-1 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold text-[10px] rounded-lg transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {barTesting ? 'Probando...' : 'Probar Impresora'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 

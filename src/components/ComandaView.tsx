@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { Capacitor } from '@capacitor/core';
+import { printEscPosOverNetwork } from '../lib/networkPrinter';
+import { buildComandaTicket, columnsForPaperWidth } from '../lib/escpos';
 
 interface Product {
   id: string;
@@ -61,6 +64,17 @@ interface Order {
   saleId?: string;
 }
 
+interface PrintConfig {
+  paperWidth: '58mm' | '80mm' | 'A4';
+  showLogo: boolean;
+  showTaxLine: boolean;
+  footerText: string;
+  kitchenPrinterIp?: string;
+  kitchenPrinterPort?: number;
+  barPrinterIp?: string;
+  barPrinterPort?: number;
+}
+
 interface ComandaViewProps {
   table: Table;
   order: Order | null;
@@ -72,6 +86,7 @@ interface ComandaViewProps {
   user: any;
   buildAndCommitSale: (params: any) => any;
   onClose: () => void;
+  printConfig?: PrintConfig;
 }
 
 const formatMXN = (val: number): string => {
@@ -94,7 +109,8 @@ export default function ComandaView({
   currentUserMember,
   user,
   buildAndCommitSale,
-  onClose
+  onClose,
+  printConfig
 }: ComandaViewProps) {
   // Navigation & Search State
   const [searchTerm, setSearchTerm] = useState('');
@@ -320,6 +336,67 @@ export default function ComandaView({
       }
       return item;
     });
+
+    // Network printing to cocina/barra (Fase 5b)
+    if (Capacitor.isNativePlatform() && printConfig) {
+      const columns = columnsForPaperWidth(printConfig.paperWidth);
+      const timestampFormatted = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      
+      const cocinaItems = groupedRounds.draft.filter(it => it.destination === 'cocina');
+      const barraItems = groupedRounds.draft.filter(it => it.destination === 'barra');
+
+      if (cocinaItems.length > 0) {
+        if (printConfig.kitchenPrinterIp) {
+          try {
+            const bytes = buildComandaTicket({
+              destinationLabel: 'COCINA',
+              tableName: table.name,
+              waiterName: order.waiterName,
+              round: newRoundNum,
+              timestamp: timestampFormatted,
+              items: cocinaItems.map(it => ({ quantity: it.quantity, name: it.name })),
+              columns
+            });
+            await printEscPosOverNetwork(
+              printConfig.kitchenPrinterIp,
+              printConfig.kitchenPrinterPort || 9100,
+              bytes
+            );
+          } catch (printErr: any) {
+            console.error('Error al imprimir en Cocina:', printErr);
+            alert(`No se pudo imprimir la comanda en Cocina: ${printErr.message || String(printErr)}`);
+          }
+        } else {
+          console.warn('Impresión de Cocina omitida: No hay IP configurada.');
+        }
+      }
+
+      if (barraItems.length > 0) {
+        if (printConfig.barPrinterIp) {
+          try {
+            const bytes = buildComandaTicket({
+              destinationLabel: 'BARRA',
+              tableName: table.name,
+              waiterName: order.waiterName,
+              round: newRoundNum,
+              timestamp: timestampFormatted,
+              items: barraItems.map(it => ({ quantity: it.quantity, name: it.name })),
+              columns
+            });
+            await printEscPosOverNetwork(
+              printConfig.barPrinterIp,
+              printConfig.barPrinterPort || 9100,
+              bytes
+            );
+          } catch (printErr: any) {
+            console.error('Error al imprimir en Barra:', printErr);
+            alert(`No se pudo imprimir la comanda en Barra: ${printErr.message || String(printErr)}`);
+          }
+        } else {
+          console.warn('Impresión de Barra omitida: No hay IP configurada.');
+        }
+      }
+    }
 
     try {
       await updateDoc(doc(db, 'companies', activeCompanyId, 'orders', order.id), {
