@@ -6076,7 +6076,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setLastCompletedSale(null)}
-              aria-label="Regresar al POS"
+              aria-label="Cerrar"
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition cursor-pointer z-10"
             >
               <X className="w-4 h-4" />
@@ -6212,7 +6212,7 @@ export default function App() {
               onClick={() => setLastCompletedSale(null)}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition shadow hover:shadow-md"
             >
-              <ArrowLeft className="w-4 h-4" /> Regresar al POS / Nueva Venta
+              <ArrowLeft className="w-4 h-4" /> Cerrar
             </button>
           </div>
         </div>
