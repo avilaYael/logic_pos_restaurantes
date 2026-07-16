@@ -2421,7 +2421,8 @@ export default function App() {
     minStock: '',
     sku: '',
     supplierId: '', // Associated supplier link
-    printDestination: 'ninguno' as 'cocina' | 'barra' | 'ninguno'
+    printDestination: 'ninguno' as 'cocina' | 'barra' | 'ninguno',
+    applyStockToAllBranches: false // Only used on create — see handleSaveProduct
   });
 
   // Quick add-stock ("Surtir") — adds units to the ACTIVE branch instead of overwriting
@@ -2475,7 +2476,8 @@ export default function App() {
         minStock: product.minStock.toString(),
         sku: product.sku || '',
         supplierId: product.supplierId || '',
-        printDestination: product.printDestination || 'ninguno'
+        printDestination: product.printDestination || 'ninguno',
+        applyStockToAllBranches: false
       });
     } else {
       setEditingProduct(null);
@@ -2488,7 +2490,8 @@ export default function App() {
         minStock: '5',
         sku: '',
         supplierId: '',
-        printDestination: 'ninguno'
+        printDestination: 'ninguno',
+        applyStockToAllBranches: false
       });
     }
     setIsProductModalOpen(true);
@@ -2529,6 +2532,19 @@ export default function App() {
         return p;
       });
     } else {
+      // New product: every existing branch gets its own explicit entry from day one so none
+      // of them ever falls back to the shared `stock` field (that field keeps draining on
+      // every sale from every branch — see applyStockDeltas — so a branch reading it as a
+      // fallback would see its "stock" change from sales that never happened there).
+      // Default is 0 everywhere except the branch being stocked right now; "Surtir" (quick
+      // add-stock) is how you add real stock to the other branches afterwards, unless the
+      // "misma cantidad en todas" checkbox is checked.
+      const branchStocks: { [branchId: string]: number } = {};
+      branches.forEach(b => {
+        branchStocks[b.id] = (b.id === selectedBranchId || prodForm.applyStockToAllBranches) ? stockNum : 0;
+      });
+      branchStocks[selectedBranchId] = stockNum;
+
       const newProd: Product = {
         id: 'P-' + Math.floor(Math.random() * 90000 + 10000),
         name: prodForm.name,
@@ -2540,7 +2556,7 @@ export default function App() {
         sku: prodForm.sku || 'SKU-' + Math.floor(Math.random() * 900000),
         supplierId: prodForm.supplierId || undefined,
         printDestination: prodForm.printDestination || 'ninguno',
-        branchStocks: { [selectedBranchId]: stockNum }
+        branchStocks
       };
       updatedProducts = [...products, newProd];
     }
@@ -3059,6 +3075,7 @@ export default function App() {
     }
 
     let updated: Branch[];
+    let updatedProducts = products;
     if (editingBranch) {
       updated = branches.map(b => b.id === editingBranch.id ? {
         ...b,
@@ -3081,8 +3098,15 @@ export default function App() {
         zones: ['Principal', 'Terraza', 'Bar/VIP']
       };
       updated = [...branches, newB];
+      // Every existing product must see this branch at 0 stock (not "no entry", which would
+      // fall back to the shared `stock` field and silently borrow another branch's number —
+      // see getProductStock/applyStockDeltas). Stays 0 until surtido or edited.
+      updatedProducts = products.map(p => ({
+        ...p,
+        branchStocks: { ...(p.branchStocks || {}), [newB.id]: 0 }
+      }));
     }
-    saveAllData(products, customers, sales, cashRegister, updated, suppliers);
+    saveAllData(updatedProducts, customers, sales, cashRegister, updated, suppliers);
     setIsBranchModalOpen(false);
   };
 
@@ -5658,14 +5682,32 @@ export default function App() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 block">Stock Inicial en Almacén</label>
-                  <input 
+                  <label className="text-xs font-bold text-slate-500 block">
+                    {editingProduct ? `Stock en ${branches.find(b => b.id === selectedBranchId)?.name || 'esta sucursal'}` : 'Stock Inicial en Almacén'}
+                  </label>
+                  <input
                     type="number"
                     placeholder="Ej: 20"
                     value={prodForm.stock}
                     onChange={e => setProdForm({ ...prodForm, stock: e.target.value })}
                     className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500"
                   />
+                  {!editingProduct && branches.length > 1 && (
+                    <label className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={prodForm.applyStockToAllBranches}
+                        onChange={e => setProdForm({ ...prodForm, applyStockToAllBranches: e.target.checked })}
+                        className="rounded border-slate-300"
+                      />
+                      Usar esta misma cantidad en las {branches.length} sucursales
+                    </label>
+                  )}
+                  {!editingProduct && branches.length > 1 && !prodForm.applyStockToAllBranches && (
+                    <p className="text-[10px] text-slate-400">
+                      Solo se asigna a {branches.find(b => b.id === selectedBranchId)?.name || 'la sucursal activa'}; las demás inician en 0 (usa "Surtir" para agregarles stock después).
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -6525,8 +6567,9 @@ export default function App() {
                 onClick={() => handlePrintReceipt(lastCompletedSale)}
                 className="w-full p-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-250 text-indigo-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition"
               >
-                <Printer className="w-4 h-4" /> Imprimir Ticket / Guardar PDF
+                <Printer className="w-4 h-4" /> Reimprimir Ticket / Guardar PDF
               </button>
+              <p className="text-[10px] text-slate-400 text-center font-medium">El ticket ya se imprimió automáticamente al cobrar.</p>
             </div>
 
             <button
