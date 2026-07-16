@@ -248,14 +248,14 @@ export default function WaiterShell({
             }}
             className={`flex-1 py-2 px-3 text-xs font-black uppercase rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 border relative ${
               activeTab === 'my-orders' 
-                ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900 text-indigo-755 dark:text-indigo-400 font-black' 
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-755 font-black' 
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
             <Clock className="w-4 h-4" />
             <span>Mis Comandas</span>
             {myOpenOrdersCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-rose-500 border border-white dark:border-slate-900 text-white font-black text-[9px] w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+              <span className="absolute -top-1.5 -right-1.5 bg-rose-500 border border-white text-white font-black text-[9px] w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                 {myOpenOrdersCount}
               </span>
             )}
@@ -308,28 +308,28 @@ export default function WaiterShell({
 
         {/* VIEW 2: MIS COMANDAS */}
         {activeTab === 'my-orders' && (
-          <div className="p-6 bg-slate-50 dark:bg-slate-950 min-h-full flex flex-col space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
+          <div className="p-6 bg-slate-50 min-h-full flex flex-col space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
             
             {/* Header & Filter Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
               <div>
-                <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
                   <Clock className="w-5 h-5 text-[var(--brand-primary,#6366f1)]" />
                   <span>Mis Comandas Abiertas / Cerradas</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                <p className="text-xs text-slate-500 mt-1 font-medium">
                   Historial de las órdenes en el salón asignadas a ti.
                 </p>
               </div>
 
               {/* Status Filters */}
-              <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm space-x-1 shrink-0">
+              <div className="flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm space-x-1 shrink-0">
                 <button
                   onClick={() => setOrderStatusFilter('open')}
                   className={`px-3 py-1.5 text-xs font-extrabold rounded-lg cursor-pointer transition select-none flex items-center gap-1 ${
                     orderStatusFilter === 'open'
                       ? 'bg-indigo-650 text-white shadow-sm'
-                      : 'text-slate-550 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'text-slate-550 hover:bg-slate-50'
                   }`}
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
@@ -340,7 +340,7 @@ export default function WaiterShell({
                   className={`px-3 py-1.5 text-xs font-extrabold rounded-lg cursor-pointer transition select-none flex items-center gap-1 ${
                     orderStatusFilter === 'closed'
                       ? 'bg-indigo-650 text-white shadow-sm'
-                      : 'text-slate-550 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'text-slate-550 hover:bg-slate-50'
                   }`}
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -351,12 +351,12 @@ export default function WaiterShell({
 
             {/* List Grid */}
             {myFilteredOrders.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center max-w-md mx-auto my-12 shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-md mx-auto my-12 shadow-sm">
                 <Clock className="w-12 h-12 text-slate-350 mx-auto mb-3" />
-                <h3 className="font-extrabold text-sm text-slate-700 dark:text-slate-300">
+                <h3 className="font-extrabold text-sm text-slate-700">
                   Sin comandas {orderStatusFilter === 'open' ? 'abiertas' : 'cerradas'}
                 </h3>
-                <p className="text-xs text-slate-550 dark:text-slate-450 mt-1 max-w-xs mx-auto">
+                <p className="text-xs text-slate-550 mt-1 max-w-xs mx-auto">
                   {orderStatusFilter === 'open' 
                     ? 'No tienes comandas activas en este momento. Ve al Mapa de Mesas para tomar una orden.'
                     : 'No tienes comandas registradas como cerradas/cobradas en este periodo.'}
@@ -396,12 +396,12 @@ export default function WaiterShell({
                           setActiveTab('tables');
                         }
                       }}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-850 p-5 rounded-2xl text-left flex flex-col justify-between transition cursor-pointer hover:shadow-md hover:scale-[1.005] h-48 shadow-sm"
+                      className="bg-white border border-slate-200 hover:border-indigo-400 p-5 rounded-2xl text-left flex flex-col justify-between transition cursor-pointer hover:shadow-md hover:scale-[1.005] h-48 shadow-sm"
                     >
                       <div className="w-full">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-black text-base text-slate-800 dark:text-white">
+                            <span className="font-black text-base text-slate-800">
                               {table?.name || `Mesa ID: ${order.tableId.slice(-4)}`}
                             </span>
                             <p className="text-[9px] text-slate-400 font-extrabold uppercase mt-0.5 tracking-wider">
@@ -410,8 +410,8 @@ export default function WaiterShell({
                           </div>
                           <span className={`text-[9px] font-black uppercase py-0.5 px-2 rounded-full border ${
                             orderStatusFilter === 'open'
-                              ? 'bg-indigo-50 border-indigo-250 text-indigo-800 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400'
-                              : 'bg-emerald-50 border-emerald-250 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-450'
+                              ? 'bg-indigo-50 border-indigo-250 text-indigo-800'
+                              : 'bg-emerald-50 border-emerald-250 text-emerald-800'
                           }`}>
                             <Clock className="w-3 h-3 inline mr-0.5" />{timeStr}
                           </span>
@@ -420,7 +420,7 @@ export default function WaiterShell({
                         {/* Items list preview */}
                         <div className="mt-3 space-y-1 max-h-16 overflow-hidden">
                           {order.items.slice(0, 3).map((it, idx) => (
-                            <p key={idx} className="text-[10px] text-slate-550 dark:text-slate-400 truncate font-semibold">
+                            <p key={idx} className="text-[10px] text-slate-550 truncate font-semibold">
                               • {it.quantity}x {it.name}
                             </p>
                           ))}
@@ -432,9 +432,9 @@ export default function WaiterShell({
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800 mt-3 w-full shrink-0">
+                      <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-3 w-full shrink-0">
                         <span className="text-xs font-bold text-slate-400">Total:</span>
-                        <span className="text-sm font-black text-indigo-650 dark:text-indigo-400">{formatMXN(total)}</span>
+                        <span className="text-sm font-black text-indigo-650">{formatMXN(total)}</span>
                       </div>
                     </button>
                   );

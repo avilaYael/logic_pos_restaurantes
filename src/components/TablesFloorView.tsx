@@ -339,22 +339,22 @@ export default function TablesFloorView({
   };
 
   return (
-    <div className="p-6 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 flex flex-col space-y-6">
+    <div className="p-6 bg-slate-50 min-h-screen text-slate-800 flex flex-col space-y-6">
 
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-5">
         <div>
           <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Coffee className="w-6 h-6 text-[var(--brand-primary,#6366f1)]" />
             <span>Plano de Mesas y Salón</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-xs text-slate-500 mt-1 font-medium">
             Visualiza y gestiona las comandas, estados y distribución táctil de las mesas para <strong className="text-[var(--brand-primary,#6366f1)]">{activeBranchName}</strong>.
           </p>
         </div>
 
-        {/* Action button */}
-        {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin' || currentUserMember?.role === 'master_admin') && (
+        {/* Action button — creating tables is salon management, reserved for owner/admin */}
+        {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'master_admin' || currentUserMember?.role === 'admin') && (
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
@@ -368,64 +368,64 @@ export default function TablesFloorView({
 
       {/* Summary Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Total Mesas</p>
             <h4 className="text-xl font-black mt-1">{totalTables}</h4>
           </div>
-          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-850 rounded-xl flex items-center justify-center font-bold text-slate-500 text-sm">
+          <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center font-bold text-slate-500 text-sm">
             <Coffee className="w-4 h-4" />
           </div>
         </div>
 
         <button
           onClick={() => setSelectedStatus(selectedStatus === 'libre' ? 'All' : 'libre')}
-          className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'libre' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+          className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
+            selectedStatus === 'libre' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200'
           }`}
         >
           <div>
             <p className="text-[10px] uppercase font-black tracking-wider text-emerald-500">Disponibles</p>
-            <h4 className="text-xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{availableCount}</h4>
+            <h4 className="text-xl font-black mt-1 text-emerald-600">{availableCount}</h4>
           </div>
-          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
             <CheckCircle2 className="w-5 h-5" />
           </div>
         </button>
 
         <button
           onClick={() => setSelectedStatus(selectedStatus === 'ocupada' ? 'All' : 'ocupada')}
-          className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'ocupada' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+          className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
+            selectedStatus === 'ocupada' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200'
           }`}
         >
           <div>
             <p className="text-[10px] uppercase font-black tracking-wider text-rose-500">Ocupadas</p>
-            <h4 className="text-xl font-black mt-1 text-rose-600 dark:text-rose-400">{occupiedCount}</h4>
+            <h4 className="text-xl font-black mt-1 text-rose-600">{occupiedCount}</h4>
           </div>
-          <div className="w-10 h-10 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
             <Coffee className="w-5 h-5" />
           </div>
         </button>
 
         <button
           onClick={() => setSelectedStatus(selectedStatus === 'por_cobrar' ? 'All' : 'por_cobrar')}
-          className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
-            selectedStatus === 'por_cobrar' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200 dark:border-slate-800'
+          className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer text-left transition select-none hover:shadow-md ${
+            selectedStatus === 'por_cobrar' ? 'border-[var(--brand-primary,#6366f1)] ring-1 ring-[var(--brand-primary,#6366f1)]' : 'border-slate-200'
           }`}
         >
           <div>
             <p className="text-[10px] uppercase font-black tracking-wider text-amber-500">Por Cobrar</p>
-            <h4 className="text-xl font-black mt-1 text-amber-600 dark:text-amber-400">{reservedCount}</h4>
+            <h4 className="text-xl font-black mt-1 text-amber-600">{reservedCount}</h4>
           </div>
-          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
             <Clock className="w-5 h-5" />
           </div>
         </button>
       </div>
 
       {/* Navigation Filter Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 p-3 rounded-2xl shadow-sm">
         <div className="flex items-center space-x-1.5 overflow-x-auto max-w-full">
           {['Todas', ...branchZones].map(zone => (
             <button
@@ -434,17 +434,17 @@ export default function TablesFloorView({
               className={`px-4 py-2 text-xs font-black rounded-xl transition cursor-pointer select-none border ${
                 selectedZone === zone
                   ? 'bg-[var(--brand-primary,#6366f1)] border-[var(--brand-primary,#6366f1)] text-white shadow-sm'
-                  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
               {zone}
             </button>
           ))}
-          {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin' || currentUserMember?.role === 'master_admin') && (
+          {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'master_admin' || currentUserMember?.role === 'admin') && (
             <button
               onClick={() => setIsZonesModalOpen(true)}
               title="Editar zonas del salón"
-              className="p-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:text-[var(--brand-primary,#6366f1)] hover:border-[var(--brand-primary,#6366f1)] transition cursor-pointer shrink-0"
+              className="p-2 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-[var(--brand-primary,#6366f1)] hover:border-[var(--brand-primary,#6366f1)] transition cursor-pointer shrink-0"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -472,19 +472,19 @@ export default function TablesFloorView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Tables Floor Area */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-[500px]">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm min-h-[500px]">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-extrabold text-sm text-slate-500 uppercase tracking-wider">
               Distribución: {selectedZone}
             </h3>
-            <span className="text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full font-bold text-slate-500">
+            <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">
               Mostrando {filteredTables.length} mesas
             </span>
           </div>
 
           {filteredTables.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-              <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">No hay mesas con los filtros activos.</p>
+              <p className="text-slate-400 font-bold text-sm">No hay mesas con los filtros activos.</p>
               <button 
                 onClick={() => { setSelectedZone('Todas'); setSelectedStatus('All'); }}
                 className="text-xs text-[var(--brand-primary,#6366f1)] hover:underline font-extrabold"
@@ -505,13 +505,13 @@ export default function TablesFloorView({
                 let statusClasses = '';
                 let statusColor = '';
                 if (table.status === 'libre') {
-                  statusClasses = 'border-emerald-200 dark:border-emerald-950/60 bg-emerald-50/50 dark:bg-emerald-950/10 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300';
+                  statusClasses = 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-400 hover:bg-emerald-50 text-emerald-800';
                   statusColor = 'var(--color-emerald-500)';
                 } else if (table.status === 'ocupada') {
-                  statusClasses = 'border-rose-200 dark:border-rose-950/60 bg-rose-50/50 dark:bg-rose-950/10 hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-800 dark:text-rose-350';
+                  statusClasses = 'border-rose-200 bg-rose-50/50 hover:border-rose-400 hover:bg-rose-50 text-rose-800';
                   statusColor = 'var(--color-rose-500)';
                 } else if (table.status === 'por_cobrar') {
-                  statusClasses = 'border-amber-200 dark:border-amber-950/60 bg-amber-50/50 dark:bg-amber-950/10 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-800 dark:text-amber-350';
+                  statusClasses = 'border-amber-200 bg-amber-50/50 hover:border-amber-400 hover:bg-amber-50 text-amber-800';
                   statusColor = 'var(--color-amber-500)';
                 }
 
@@ -530,7 +530,7 @@ export default function TablesFloorView({
                   >
                     {/* Top Row: Mesa ID / Zone Badge */}
                     <div className="flex justify-between items-center w-full">
-                      <span className="text-[9px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2 py-0.5 rounded-lg text-slate-500 font-extrabold shadow-sm">
+                      <span className="text-[9px] bg-white border border-slate-100 px-2 py-0.5 rounded-lg text-slate-500 font-extrabold shadow-sm">
                         {zone}
                       </span>
                       <span 
@@ -548,15 +548,15 @@ export default function TablesFloorView({
                           shape === 'round' ? 'rounded-full' : 'rounded-2xl'
                         } ${
                           table.status === 'ocupada' 
-                            ? 'bg-rose-100 dark:bg-rose-900/30' 
+                            ? 'bg-rose-100' 
                             : table.status === 'por_cobrar'
-                            ? 'bg-amber-100 dark:bg-amber-900/30'
-                            : 'bg-emerald-100 dark:bg-emerald-900/30'
+                            ? 'bg-amber-100'
+                            : 'bg-emerald-100'
                         }`}
                       >
                         <span className="text-base font-black">{table.name}</span>
                         {/* Capacity visual dots */}
-                        <div className="absolute -top-1 px-1 bg-white dark:bg-slate-900 rounded-full border border-slate-150 dark:border-slate-800 text-[8px] font-black text-slate-500 flex items-center gap-0.5 shadow-sm">
+                        <div className="absolute -top-1 px-1 bg-white rounded-full border border-slate-150 text-[8px] font-black text-slate-500 flex items-center gap-0.5 shadow-sm">
                           <Users className="w-2 h-2" />
                           <span>{table.capacity || 4}</span>
                         </div>
@@ -569,7 +569,7 @@ export default function TablesFloorView({
                         <>
                           <div className="leading-none">
                             <p className="text-[8px] uppercase font-black text-slate-400">Total</p>
-                            <p className="text-xs font-black text-slate-850 dark:text-slate-150">
+                            <p className="text-xs font-black text-slate-850">
                               {formatMXN(orderTotal)}
                             </p>
                           </div>
@@ -579,7 +579,7 @@ export default function TablesFloorView({
                           </div>
                         </>
                       ) : (
-                        <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                        <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wide">
                           Disponible
                         </span>
                       )}
@@ -593,17 +593,17 @@ export default function TablesFloorView({
 
         {/* Selected Table Drawer/Details Sidepanel */}
         <div className="lg:col-span-4 flex flex-col space-y-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm min-h-[500px] flex flex-col justify-between">
             {activeTable ? (
               <div className="flex-1 flex flex-col justify-between">
                 
                 {/* Upper Details block */}
                 <div className="space-y-5">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                     <div>
                       <h4 className="text-base font-black tracking-tight flex items-center gap-1.5">
                         <span>{activeTable.name}</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 rounded-lg text-slate-500">
                           {activeTable.zone || 'Principal'}
                         </span>
                       </h4>
@@ -612,7 +612,7 @@ export default function TablesFloorView({
                     <button
                       onClick={() => setActiveTable(null)}
                       aria-label="Cerrar"
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-extrabold text-sm"
+                      className="text-slate-400 hover:text-slate-600 font-extrabold text-sm"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -641,7 +641,7 @@ export default function TablesFloorView({
                       <h5 className="text-xs font-black uppercase tracking-wide">
                         {activeTable.status === 'ocupada' ? 'Mesa Ocupada' : activeTable.status === 'por_cobrar' ? 'Por Cobrar' : 'Disponible / Libre'}
                       </h5>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[10px] text-slate-500">
                         Capacidad de comensales: {activeTable.capacity || 4} personas
                       </p>
                     </div>
@@ -650,13 +650,13 @@ export default function TablesFloorView({
                   {/* Table details lists */}
                   <div className="space-y-3.5">
                     {selectedTableOrder && (
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800 flex items-center gap-2">
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-[var(--brand-primary,#6366f1)]/10 text-[var(--brand-primary,#6366f1)] flex items-center justify-center">
                           <User className="w-4 h-4" />
                         </div>
                         <div>
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Mesero Asignado</span>
-                          <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                          <span className="text-xs font-extrabold text-slate-700">
                             {selectedTableOrder.waiterName}
                           </span>
                         </div>
@@ -665,15 +665,15 @@ export default function TablesFloorView({
 
                     {activeTable.status !== 'libre' && selectedTableOrder && (
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-150">
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Monto Cuenta</span>
-                          <span className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 block">
+                          <span className="text-sm font-black text-rose-600 mt-0.5 block">
                             {formatMXN(selectedTableOrder.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0))}
                           </span>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-150 dark:border-slate-800">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-150">
                           <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Tiempo Transcurrido</span>
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-0.5 block flex items-center gap-1">
+                          <span className="text-sm font-bold text-slate-700 mt-0.5 block flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 inline text-slate-400" />
                             {Math.floor((Date.now() - Date.parse(selectedTableOrder.openedAt)) / 60000)} min
                           </span>
@@ -686,13 +686,13 @@ export default function TablesFloorView({
                   {activeTable.status !== 'libre' && selectedTableOrder && selectedTableOrder.items.length > 0 && (
                     <div className="space-y-2 mt-4">
                       <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Artículos Consumidos</span>
-                      <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 text-xs max-h-[160px] overflow-y-auto">
+                      <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 text-xs max-h-[160px] overflow-y-auto">
                         {selectedTableOrder.items.map((item, idx) => (
-                          <div key={idx} className="p-2.5 flex justify-between bg-slate-50/50 dark:bg-slate-800/20">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          <div key={idx} className="p-2.5 flex justify-between bg-slate-50/50">
+                            <span className="font-semibold text-slate-700">
                               {item.quantity}x {item.name}
                             </span>
-                            <span className="font-extrabold text-slate-850 dark:text-white">
+                            <span className="font-extrabold text-slate-850">
                               {formatMXN(item.unitPrice * item.quantity)}
                             </span>
                           </div>
@@ -703,7 +703,7 @@ export default function TablesFloorView({
                 </div>
 
                 {/* Bottom Action buttons */}
-                <div className="space-y-2.5 pt-5 border-t border-slate-100 dark:border-slate-800 mt-5">
+                <div className="space-y-2.5 pt-5 border-t border-slate-100 mt-5">
                   {currentUserMember?.role === 'employee' ? (
                     // Cajero (employee) specific actions
                     activeTable.status === 'por_cobrar' ? (
@@ -742,7 +742,7 @@ export default function TablesFloorView({
                         <button
                           type="button"
                           onClick={() => onManageOrder(activeTable)}
-                          className="w-full py-3 bg-slate-850 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
+                          className="w-full py-3 bg-slate-800 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
                         >
                           <FolderOpen className="w-3.5 h-3.5" />Gestionar Comanda / Cobrar
                         </button>
@@ -809,15 +809,15 @@ export default function TablesFloorView({
       {/* Premium Add Table Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                 <Utensils className="w-4 h-4" /><span>Crear Nueva Mesa</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 aria-label="Cerrar"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-extrabold text-sm cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 font-extrabold text-sm cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -826,21 +826,21 @@ export default function TablesFloorView({
             <form onSubmit={handleSubmitAddTable} className="space-y-4 pt-4">
               {/* Name */}
               <div className="space-y-1 text-left">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Nombre / Identificador</label>
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-wider block">Nombre / Identificador</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej. Mesa 12, Barra 2"
                   value={newTableName}
                   onChange={e => setNewTableName(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white"
+                  className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Capacity */}
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Capacidad</label>
+                  <label className="text-[10px] text-slate-500 font-black uppercase tracking-wider block">Capacidad</label>
                   <input
                     type="number"
                     min="1"
@@ -848,17 +848,17 @@ export default function TablesFloorView({
                     required
                     value={newTableCapacity}
                     onChange={e => setNewTableCapacity(parseInt(e.target.value) || 4)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white"
+                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800"
                   />
                 </div>
 
                 {/* Shape */}
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Forma</label>
+                  <label className="text-[10px] text-slate-500 font-black uppercase tracking-wider block">Forma</label>
                   <select
                     value={newTableShape}
                     onChange={e => setNewTableShape(e.target.value as 'square' | 'round')}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 cursor-pointer"
                   >
                     <option value="square">Cuadrada</option>
                     <option value="round">Redonda</option>
@@ -868,11 +868,11 @@ export default function TablesFloorView({
 
               {/* Zone */}
               <div className="space-y-1 text-left">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Zona del Salón</label>
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-wider block">Zona del Salón</label>
                 <select
                   value={newTableZone}
                   onChange={e => setNewTableZone(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 dark:text-white cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-3 outline-none font-bold focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] text-slate-800 cursor-pointer"
                 >
                   {branchZones.length === 0 && <option value="">Sin zonas configuradas</option>}
                   {branchZones.map(zone => (
@@ -885,7 +885,7 @@ export default function TablesFloorView({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
+                  className="flex-1 py-3 border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
@@ -904,16 +904,16 @@ export default function TablesFloorView({
       {/* Premium Confirm Dialog Modal */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800">
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/50 text-xl font-bold">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-100 text-xl font-bold">
                 <AlertCircle className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wide">
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">
                   {confirmModal.title}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold">
                   {confirmModal.message}
                 </p>
               </div>
@@ -921,7 +921,7 @@ export default function TablesFloorView({
                 <button
                   type="button"
                   onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
@@ -944,14 +944,14 @@ export default function TablesFloorView({
       {/* Edit Zones Modal — zones are per-branch, not a fixed list */}
       {isZonesModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl text-slate-800 dark:text-slate-100">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-sm shadow-2xl text-slate-800">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-black uppercase tracking-wide">Zonas del Salón</h3>
               <button
                 type="button"
                 onClick={() => { setIsZonesModalOpen(false); setEditingZoneIndex(null); setNewZoneName(''); }}
                 aria-label="Cerrar"
-                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-full transition cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -962,7 +962,7 @@ export default function TablesFloorView({
                 <p className="text-xs text-slate-400 text-center py-4">Sin zonas todavía. Agrega la primera abajo.</p>
               )}
               {branchZones.map((zone, index) => (
-                <div key={zone} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2">
+                <div key={zone} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2">
                   {editingZoneIndex === index ? (
                     <>
                       <input
@@ -971,7 +971,7 @@ export default function TablesFloorView({
                         onChange={e => setEditingZoneValue(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleRenameZone(index); if (e.key === 'Escape') setEditingZoneIndex(null); }}
                         autoFocus
-                        className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-1 focus:ring-[var(--brand-primary,#6366f1)]"
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-1 focus:ring-[var(--brand-primary,#6366f1)]"
                       />
                       <button type="button" onClick={() => handleRenameZone(index)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer transition" title="Guardar">
                         <Check className="w-3.5 h-3.5" />
@@ -986,7 +986,7 @@ export default function TablesFloorView({
                       <button
                         type="button"
                         onClick={() => { setEditingZoneIndex(index); setEditingZoneValue(zone); }}
-                        className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition"
+                        className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg cursor-pointer transition"
                         title="Renombrar"
                       >
                         <Settings className="w-3.5 h-3.5" />
@@ -994,7 +994,7 @@ export default function TablesFloorView({
                       <button
                         type="button"
                         onClick={() => handleDeleteZone(index)}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer transition"
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer transition"
                         title="Eliminar zona"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1005,14 +1005,14 @@ export default function TablesFloorView({
               ))}
             </div>
 
-            <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
               <input
                 type="text"
                 value={newZoneName}
                 onChange={e => setNewZoneName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddZone(); }}
                 placeholder="Nueva zona (ej. Rooftop)"
-                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)]"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)]"
               />
               <button
                 type="button"

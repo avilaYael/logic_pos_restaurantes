@@ -76,14 +76,14 @@ export default function EmployeePinLogin({
         style={{ backgroundColor: 'var(--brand-accent, #a855f7)' }}
       />
 
-      <div className="w-full max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl border border-slate-200/60 dark:border-slate-800/60 shadow-2xl p-6 relative z-10 flex flex-col justify-between min-h-[580px] animate-slide-up">
+      <div className="w-full max-w-sm bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-2xl p-6 relative z-10 flex flex-col justify-between min-h-[580px] animate-slide-up">
         
         {/* Header Section */}
         <div>
           {onCancel && (
             <button
               onClick={onCancel}
-              className="flex items-center space-x-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition text-xs font-bold mb-3 cursor-pointer group"
+              className="flex items-center space-x-1 text-slate-500 hover:text-slate-800 transition text-xs font-bold mb-3 cursor-pointer group"
             >
               <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition" />
               <span>Regresar</span>
@@ -104,8 +104,8 @@ export default function EmployeePinLogin({
               />
             </div>
             <div>
-              <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 tracking-tight">Acceso de Personal</h3>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Introduce tu número de empleado para iniciar turno</p>
+              <h3 className="font-black text-xl text-slate-800 tracking-tight">Acceso de Personal</h3>
+              <p className="text-[11px] text-slate-400 font-medium">Introduce tu número de empleado para iniciar turno</p>
             </div>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function EmployeePinLogin({
                   className={`w-4.5 h-4.5 rounded-full border transition-all duration-300 transform ${
                     isActive 
                       ? 'scale-110 shadow-lg' 
-                      : 'scale-100 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-850'
+                      : 'scale-100 border-slate-300 bg-slate-50'
                   }`}
                   style={{
                     backgroundColor: isActive ? 'var(--brand-primary, #6366f1)' : undefined,
@@ -144,7 +144,7 @@ export default function EmployeePinLogin({
             <button
               type="button"
               onClick={() => setShowPin(!showPin)}
-              className="text-[10px] font-black text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg cursor-pointer transition select-none"
+              className="text-[10px] font-black text-slate-500 hover:text-slate-800 flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 rounded-lg cursor-pointer transition select-none"
             >
               {showPin ? (
                 <>
@@ -163,7 +163,7 @@ export default function EmployeePinLogin({
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-[10px] font-black text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center space-x-1 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/30 rounded-lg cursor-pointer transition select-none"
+                className="text-[10px] font-black text-rose-500 hover:text-rose-700 flex items-center space-x-1 px-2.5 py-1 bg-rose-50 rounded-lg cursor-pointer transition select-none"
               >
                 <span>Limpiar</span>
               </button>
@@ -172,8 +172,8 @@ export default function EmployeePinLogin({
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl text-left animate-shake">
-              <p className="text-[10px] text-red-600 dark:text-red-400 font-bold leading-normal text-center flex items-center justify-center gap-1">
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-left animate-shake">
+              <p className="text-[10px] text-red-600 font-bold leading-normal text-center flex items-center justify-center gap-1">
                 <AlertCircle className="w-3 h-3 shrink-0" />{errorMessage}
               </p>
             </div>
@@ -188,7 +188,7 @@ export default function EmployeePinLogin({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleKeyPress(num)}
-              className="w-20 h-20 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_8%,#f8fafc)] dark:hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_12%,#1e293b)] hover:text-[var(--brand-primary,#6366f1)] hover:border-[color-mix(in_srgb,var(--brand-primary,#6366f1)_40%,transparent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] focus:ring-offset-2 active:scale-90 active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#f1f5f9)] dark:active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#0f172a)] text-slate-800 dark:text-slate-100 font-black text-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer transition duration-150 select-none hover:shadow-md"
+              className="w-20 h-20 rounded-2xl bg-slate-50 hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_8%,#f8fafc)] hover:text-[var(--brand-primary,#6366f1)] hover:border-[color-mix(in_srgb,var(--brand-primary,#6366f1)_40%,transparent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] focus:ring-offset-2 active:scale-90 active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#f1f5f9)] text-slate-800 font-black text-xl flex items-center justify-center border border-slate-100 shadow-sm cursor-pointer transition duration-150 select-none hover:shadow-md"
             >
               {num}
             </button>
@@ -199,7 +199,7 @@ export default function EmployeePinLogin({
             type="button"
             disabled={isSubmitting}
             onClick={handleBackspace}
-            className="w-20 h-20 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 hover:border-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 active:scale-90 active:bg-rose-100 dark:active:bg-rose-900/30 text-slate-500 font-black flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer transition duration-150 select-none"
+            className="w-20 h-20 rounded-2xl bg-slate-50 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 active:scale-90 active:bg-rose-100 text-slate-500 font-black flex items-center justify-center border border-slate-100 shadow-sm cursor-pointer transition duration-150 select-none"
             title="Borrar"
           >
             <Delete className="w-5 h-5" />
@@ -210,7 +210,7 @@ export default function EmployeePinLogin({
             type="button"
             disabled={isSubmitting}
             onClick={() => handleKeyPress('0')}
-            className="w-20 h-20 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_8%,#f8fafc)] dark:hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_12%,#1e293b)] hover:text-[var(--brand-primary,#6366f1)] hover:border-[color-mix(in_srgb,var(--brand-primary,#6366f1)_40%,transparent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] focus:ring-offset-2 active:scale-90 active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#f1f5f9)] dark:active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#0f172a)] text-slate-800 dark:text-slate-100 font-black text-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer transition duration-150 select-none hover:shadow-md"
+            className="w-20 h-20 rounded-2xl bg-slate-50 hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_8%,#f8fafc)] hover:text-[var(--brand-primary,#6366f1)] hover:border-[color-mix(in_srgb,var(--brand-primary,#6366f1)_40%,transparent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary,#6366f1)] focus:ring-offset-2 active:scale-90 active:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_18%,#f1f5f9)] text-slate-800 font-black text-xl flex items-center justify-center border border-slate-100 shadow-sm cursor-pointer transition duration-150 select-none hover:shadow-md"
           >
             0
           </button>
@@ -232,9 +232,9 @@ export default function EmployeePinLogin({
         </div>
 
         {/* Footer info/brand styling indicator */}
-        <div className="text-center pt-2.5 border-t border-slate-100 dark:border-slate-800 flex justify-center items-center space-x-1.5">
+        <div className="text-center pt-2.5 border-t border-slate-100 flex justify-center items-center space-x-1.5">
           <div className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: 'var(--brand-accent, #a855f7)' }} />
-          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
             Seguridad Logic POS
           </span>
         </div>

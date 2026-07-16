@@ -3567,7 +3567,7 @@ export default function App() {
                 <input
                   type="text"
                   required
-                  placeholder="Ej: 1001"
+                  placeholder="Ej: 123456"
                   value={authUsername}
                   onChange={(e) => setAuthUsername(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold text-slate-700 placeholder-slate-300 text-xs font-mono"

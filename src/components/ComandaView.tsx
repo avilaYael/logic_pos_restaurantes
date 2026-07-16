@@ -570,13 +570,13 @@ export default function ComandaView({
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] overflow-hidden">
       
       {/* LEFT COLUMN: Order status, round details, and checkout trigger */}
-      <div className="lg:w-96 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
+      <div className="lg:w-96 flex flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
         
         {/* Table Details Header */}
-        <div className="flex justify-between items-start pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex justify-between items-start pb-4 border-b border-slate-100 shrink-0">
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-              <ArrowLeft className="w-5 h-5 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-white" onClick={onClose} />
+            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+              <ArrowLeft className="w-5 h-5 cursor-pointer text-slate-400 hover:text-slate-600" onClick={onClose} />
               <span>Mesa {table.name}</span>
             </h3>
             <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
@@ -584,7 +584,7 @@ export default function ComandaView({
             </p>
           </div>
           {order && (
-            <span className="text-[9px] font-black uppercase py-1 px-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-indigo-300 rounded-xl">
+            <span className="text-[9px] font-black uppercase py-1 px-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl">
               <Clock className="w-2.5 h-2.5 inline mr-0.5" />{elapsedMinutes} min
             </span>
           )}
@@ -593,12 +593,12 @@ export default function ComandaView({
         {/* Order Details Body */}
         {!order ? (
           <div className="flex-1 flex flex-col justify-center items-center p-6 text-center space-y-4 shrink-0">
-            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center border border-emerald-100 dark:border-emerald-900/50">
-              <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400 animate-bounce" />
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
+              <Check className="w-8 h-8 text-emerald-600 animate-bounce" />
             </div>
             <div>
-              <h4 className="font-extrabold text-sm text-slate-800 dark:text-white">La mesa está libre</h4>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs">Abre la mesa para registrar comandas y asociarle un mesero.</p>
+              <h4 className="font-extrabold text-sm text-slate-800">La mesa está libre</h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs">Abre la mesa para registrar comandas y asociarle un mesero.</p>
             </div>
             <button
               onClick={handleOpenTable}
@@ -611,12 +611,12 @@ export default function ComandaView({
           <div className="flex-grow flex flex-col overflow-hidden pt-4 space-y-4 justify-between">
             
             {/* Status indicators */}
-            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-2 shrink-0 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold">
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2 shrink-0 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
                 <User className="w-3.5 h-3.5" />
                 <span>{order.waiterName}</span>
               </div>
-              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">
+              <span className="text-[10px] text-indigo-600 font-extrabold bg-indigo-50 px-2 py-0.5 rounded">
                 ID: {order.id.slice(-6).toUpperCase()}
               </span>
             </div>
@@ -633,9 +633,9 @@ export default function ComandaView({
                   </h4>
                   <div className="space-y-1.5">
                     {groupedRounds.draft.map((item, idx) => (
-                      <div key={`draft-${idx}`} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl shadow-sm">
+                      <div key={`draft-${idx}`} className="flex justify-between items-center bg-slate-50 border border-slate-200 p-2.5 rounded-xl shadow-sm">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-extrabold text-slate-800 dark:text-white truncate">{item.name}</p>
+                          <p className="text-xs font-extrabold text-slate-800 truncate">{item.name}</p>
                           <p className="text-[10px] text-slate-400 font-bold">
                             {formatMXN(item.unitPrice)} c/u · <span className="uppercase text-[9px] text-indigo-500">{item.destination}</span>
                           </p>
@@ -643,20 +643,20 @@ export default function ComandaView({
                         <div className="flex items-center space-x-2 shrink-0 ml-3">
                           <button
                             onClick={() => handleUpdateQty(item.productId, -1)}
-                            className="p-1 rounded-md border bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-350 cursor-pointer"
+                            className="p-1 rounded-md border bg-white hover:bg-slate-100 border-slate-200 text-slate-600 cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-xs font-black text-slate-855 dark:text-white w-4 text-center">{item.quantity}</span>
+                          <span className="text-xs font-black text-slate-855 w-4 text-center">{item.quantity}</span>
                           <button
                             onClick={() => handleUpdateQty(item.productId, 1)}
-                            className="p-1 rounded-md border bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-350 cursor-pointer"
+                            className="p-1 rounded-md border bg-white hover:bg-slate-100 border-slate-200 text-slate-600 cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => handleRemoveItem(item.productId)}
-                            className="p-1 rounded-md border bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40 border-red-200 dark:border-red-900/50 text-red-500 cursor-pointer"
+                            className="p-1 rounded-md border bg-red-50 hover:bg-red-100 border-red-200 text-red-500 cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -682,25 +682,25 @@ export default function ComandaView({
                     const rNum = Number(roundNumStr);
                     const rItems = groupedRounds.sent[rNum];
                     return (
-                      <div key={`round-${rNum}`} className="space-y-1.5 border-t border-slate-100 dark:border-slate-800 pt-3">
+                      <div key={`round-${rNum}`} className="space-y-1.5 border-t border-slate-100 pt-3">
                         <div className="flex justify-between items-center">
                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
                             Ronda #{rNum} (Enviada)
                           </h4>
-                          <span className="text-[9px] text-slate-450 dark:text-slate-400 font-bold flex items-center gap-1">
+                          <span className="text-[9px] text-slate-450 font-bold flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5" />Listo / En Preparación
                           </span>
                         </div>
                         <div className="space-y-1">
                           {rItems.map((item, idx) => (
-                            <div key={`sent-${rNum}-${idx}`} className="flex justify-between items-center bg-slate-50/50 dark:bg-slate-850/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <div key={`sent-${rNum}-${idx}`} className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
                               <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold text-slate-650 dark:text-slate-300 truncate">{item.name}</p>
+                                <p className="text-xs font-semibold text-slate-650 truncate">{item.name}</p>
                                 <p className="text-[9px] text-slate-400 font-bold">
                                   {item.quantity}x @ {formatMXN(item.unitPrice)} · <span className="uppercase text-[8px] text-indigo-400">{item.destination}</span>
                                 </p>
                               </div>
-                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 pr-1">
+                              <span className="text-xs font-bold text-slate-500 pr-1">
                                 {formatMXN(item.unitPrice * item.quantity)}
                               </span>
                             </div>
@@ -720,9 +720,9 @@ export default function ComandaView({
             </div>
 
             {/* Bottom Bill Panel & Checkout Action */}
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-4 shrink-0 bg-white dark:bg-slate-900">
+            <div className="border-t border-slate-100 pt-4 space-y-4 shrink-0 bg-white">
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <div className="flex justify-between text-slate-500">
                   <span>Subtotal</span>
                   <span>{formatMXN(totals.subtotal)}</span>
                 </div>
@@ -738,15 +738,15 @@ export default function ComandaView({
                     <span>{formatMXN(totals.tax)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-base font-black text-slate-800 dark:text-white pt-1">
+                <div className="flex justify-between items-center text-base font-black text-slate-800 pt-1">
                   <span>Total Cuenta</span>
                   <span className="text-lg text-[var(--brand-primary,#6366f1)]">{formatMXN(totals.total)}</span>
                 </div>
               </div>
 
               {order.status === 'closed' ? (
-                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-center border border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+                <div className="p-3 bg-slate-100 rounded-xl text-center border border-slate-200">
+                  <span className="text-xs font-black uppercase text-slate-500 flex items-center justify-center gap-1.5">
                     <Check className="w-4 h-4" />Comanda Cerrada & Cobrada
                   </span>
                 </div>
@@ -839,10 +839,10 @@ export default function ComandaView({
 
       {/* RIGHT COLUMN: Product Catalog selection */}
       {order && (
-        <div className="flex-grow flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
+        <div className="flex-grow flex flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
           
           {/* Search and Categories bar */}
-          <div className="space-y-3 shrink-0 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="space-y-3 shrink-0 pb-3 border-b border-slate-100">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
@@ -850,7 +850,7 @@ export default function ComandaView({
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar platillo, bebida o postre..."
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] focus:ring-1 focus:ring-[var(--brand-primary,#6366f1)] font-medium text-slate-750 dark:text-white"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] focus:ring-1 focus:ring-[var(--brand-primary,#6366f1)] font-medium text-slate-750"
               />
             </div>
 
@@ -863,7 +863,7 @@ export default function ComandaView({
                   className={`text-[10px] font-black uppercase px-3.5 py-1.5 rounded-full border cursor-pointer shrink-0 transition select-none ${
                     selectedCategory === cat
                       ? 'bg-[var(--brand-primary,#6366f1)] border-[var(--brand-primary,#6366f1)] text-white shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-750 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
                   }`}
                 >
                   {cat}
@@ -892,33 +892,33 @@ export default function ComandaView({
                     onClick={() => handleAddItem(prod)}
                     className={`border rounded-2xl p-3 flex flex-col justify-between text-left cursor-pointer transition relative group h-36 ${
                       isOutOfStock
-                        ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-40 cursor-not-allowed'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[var(--brand-primary,#6366f1)] hover:shadow-md'
+                        ? 'bg-slate-50 border-slate-200 opacity-40 cursor-not-allowed'
+                        : 'bg-white border-slate-200 hover:border-[var(--brand-primary,#6366f1)] hover:shadow-md'
                     }`}
                   >
                     <div>
                       <div className="flex justify-between items-start gap-1 w-full">
-                        <span className="text-[8px] bg-slate-50 dark:bg-slate-800 border border-slate-150 dark:border-slate-700 px-1.5 py-0.5 rounded text-slate-500 font-extrabold truncate max-w-[80px]">
+                        <span className="text-[8px] bg-slate-50 border border-slate-150 px-1.5 py-0.5 rounded text-slate-500 font-extrabold truncate max-w-[80px]">
                           {prod.category}
                         </span>
                         <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${
                           stock <= 5 
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' 
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400'
+                            ? 'bg-rose-100 text-rose-800' 
+                            : 'bg-emerald-100 text-emerald-800'
                         }`}>
                           Stock: {stock}
                         </span>
                       </div>
-                      <h4 className="text-xs font-extrabold text-slate-800 dark:text-white mt-2 group-hover:text-[var(--brand-primary,#6366f1)] line-clamp-2 pr-1 leading-snug">
+                      <h4 className="text-xs font-extrabold text-slate-800 mt-2 group-hover:text-[var(--brand-primary,#6366f1)] line-clamp-2 pr-1 leading-snug">
                         {prod.name}
                       </h4>
                     </div>
 
-                    <div className="flex justify-between items-end mt-2 pt-2 border-t border-slate-50 dark:border-slate-800/60 w-full shrink-0">
-                      <span className="text-xs font-black text-slate-800 dark:text-white">
+                    <div className="flex justify-between items-end mt-2 pt-2 border-t border-slate-50 w-full shrink-0">
+                      <span className="text-xs font-black text-slate-800">
                         {formatMXN(prod.salePrice)}
                       </span>
-                      <span className="text-[9px] font-black uppercase px-2 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 rounded-lg group-hover:bg-[var(--brand-primary,#6366f1)] group-hover:text-white group-hover:border-[var(--brand-primary,#6366f1)] transition">
+                      <span className="text-[9px] font-black uppercase px-2 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-lg group-hover:bg-[var(--brand-primary,#6366f1)] group-hover:text-white group-hover:border-[var(--brand-primary,#6366f1)] transition">
                         + Añadir
                       </span>
                     </div>
@@ -934,12 +934,12 @@ export default function ComandaView({
       {/* CHECKOUT MODAL WINDOW */}
       {isCheckoutOpen && order && (
         <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-150 dark:border-slate-800 flex justify-between items-center">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-150 flex justify-between items-center">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                <h3 className="text-base font-black text-slate-800 flex items-center gap-1.5">
                   <Ticket className="w-5 h-5 text-indigo-500" />
                   <span>Cierre de Cuenta — Mesa {table.name}</span>
                 </h3>
@@ -948,7 +948,7 @@ export default function ComandaView({
               <button
                 onClick={() => setIsCheckoutOpen(false)}
                 aria-label="Cerrar"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-extrabold text-sm"
+                className="text-slate-400 hover:text-slate-600 font-extrabold text-sm"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -978,8 +978,8 @@ export default function ComandaView({
                         }}
                         className={`p-3 rounded-xl border-2 text-xs font-black text-center cursor-pointer transition select-none active:scale-95 flex flex-col items-center gap-1 ${
                           paymentMethod === method.id
-                            ? 'border-[var(--brand-primary,#6366f1)] bg-indigo-50/50 dark:bg-indigo-950/20 text-[var(--brand-primary,#6366f1)]'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-300'
+                            ? 'border-[var(--brand-primary,#6366f1)] bg-indigo-50/50 text-[var(--brand-primary,#6366f1)]'
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-650'
                         }`}
                       >
                         <method.icon className="w-4 h-4" />
@@ -990,8 +990,8 @@ export default function ComandaView({
 
                   {/* Cash Flow Inputs */}
                   {paymentMethod === 'Cash' && (
-                    <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
-                      <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-3">
+                      <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">
                         Efectivo Recibido
                       </label>
                       <div className="relative">
@@ -1001,7 +1001,7 @@ export default function ComandaView({
                           value={receivedCashAmount}
                           onChange={e => setReceivedCashAmount(e.target.value)}
                           placeholder="Monto entregado por cliente..."
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-semibold text-slate-700 dark:text-white"
+                          className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-semibold text-slate-700"
                         />
                       </div>
                       {receivedCashAmount && (
@@ -1019,8 +1019,8 @@ export default function ComandaView({
 
                   {/* Authorization Folio for Card / Transfer */}
                   {(paymentMethod === 'Card' || paymentMethod === 'Transfer') && (
-                    <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-2">
-                      <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-2">
+                      <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">
                         Número de Folio / Referencia *
                       </label>
                       <input
@@ -1029,7 +1029,7 @@ export default function ComandaView({
                         onChange={e => setFolioNumber(e.target.value)}
                         placeholder="Ej. 123456"
                         required
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-medium text-slate-700 dark:text-white"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-medium text-slate-700"
                       />
                     </div>
                   )}
@@ -1045,7 +1045,7 @@ export default function ComandaView({
                         const cust = customers.find(c => c.id === e.target.value) || null;
                         setSelectedCustomer(cust);
                       }}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] text-slate-700 dark:text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] text-slate-700"
                     >
                       <option value="">-- Seleccionar Cliente --</option>
                       {customers.map(cust => (
@@ -1064,7 +1064,7 @@ export default function ComandaView({
                       onChange={e => setRequiresInvoice(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-200 text-[var(--brand-primary,#6366f1)] focus:ring-[var(--brand-primary,#6366f1)]"
                     />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Solicitar Factura Fiscal</span>
+                    <span className="font-semibold text-slate-700">Solicitar Factura Fiscal</span>
                   </label>
                 </div>
 
@@ -1074,7 +1074,7 @@ export default function ComandaView({
                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Descuentos y Ajustes</span>
                     
                     {/* Discount Controls */}
-                    <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3 text-xs">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-3 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-slate-500">Tipo de Descuento:</span>
                         <div className="flex gap-1.5">
@@ -1082,7 +1082,7 @@ export default function ComandaView({
                             type="button"
                             onClick={() => { setDiscountType('pct'); setDiscountVal(0); }}
                             className={`px-2 py-1 text-[10px] font-black rounded-lg border ${
-                              discountType === 'pct' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200'
+                              discountType === 'pct' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'
                             }`}
                           >
                             % Porcentaje
@@ -1091,7 +1091,7 @@ export default function ComandaView({
                             type="button"
                             onClick={() => { setDiscountType('val'); setDiscountVal(0); }}
                             className={`px-2 py-1 text-[10px] font-black rounded-lg border ${
-                              discountType === 'val' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200'
+                              discountType === 'val' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'
                             }`}
                           >
                             $ Valor Fijo
@@ -1105,7 +1105,7 @@ export default function ComandaView({
                           value={discountVal || ''}
                           onChange={e => setDiscountVal(Math.max(0, parseFloat(e.target.value) || 0))}
                           placeholder={discountType === 'pct' ? 'Ej. 10 (para 10%)' : 'Ej. 50 (para $50)'}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-semibold text-slate-700 dark:text-white"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs outline-none focus:border-[var(--brand-primary,#6366f1)] font-semibold text-slate-700"
                         />
                       </div>
 
@@ -1115,7 +1115,7 @@ export default function ComandaView({
                         <select
                           value={taxPct}
                           onChange={e => setTaxPct(parseInt(e.target.value) || 0)}
-                          className="bg-white dark:bg-slate-700 border border-slate-250 dark:border-slate-750 rounded px-2 py-1 font-semibold text-[11px]"
+                          className="bg-white border border-slate-250 rounded px-2 py-1 font-semibold text-[11px]"
                         >
                           <option value="0">Sin IVA (0%)</option>
                           <option value="16">IVA General (16%)</option>
@@ -1156,11 +1156,11 @@ export default function ComandaView({
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-3.5 shrink-0">
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-150 flex justify-end gap-3.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsCheckoutOpen(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black uppercase text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase text-slate-500 hover:bg-slate-100 transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1181,16 +1181,16 @@ export default function ComandaView({
       {/* Premium Confirm Dialog Modal */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-slate-800">
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/50 text-xl font-bold">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-100 text-xl font-bold">
                 <AlertCircle className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wide">
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">
                   {confirmModal.title}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold">
                   {confirmModal.message}
                 </p>
               </div>
@@ -1198,7 +1198,7 @@ export default function ComandaView({
                 <button
                   type="button"
                   onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-black rounded-xl uppercase tracking-wider transition cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
