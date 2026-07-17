@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:apk": "set BUILD_TARGET=capacitor&& vite build && npx cap sync android && cd android && gradlew assembleDebug && cd .. && copy /y android\\app\\build\\outputs\\apk\\debug\\app-debug.apk logic-pos.apk",
-    "build:apk:release": "set BUILD_TARGET=capacitor&& vite build && npx cap sync android && cd android && gradlew assembleRelease && cd .. && copy /y android\\app\\build\\outputs\\apk\\release\\app-release.apk logic-pos-release.apk",
+    "build:apk:release": "set BUILD_TARGET=capacitor&& vite build && npx cap sync android && cd android && gradlew assembleRelease && cd .. && copy /y android\\app\\build\\outputs\\apk\\release\\app-release.apk \"LOGIC POS RESTAURANTES.apk\"",
     "cap:sync": "set BUILD_TARGET=capacitor&& vite build && npx cap sync android",
     "start": "node dist/server.cjs",
     "lint": "tsc --noEmit",
