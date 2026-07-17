@@ -1,4 +1,14 @@
-name: Deploy LOGIC POS
+name: Deploy LOGIC POS Restaurantes
+
+# Static-site deploy: this app has no server-side API routes (server.ts is just
+# Vite/Express serving the built dist/ with an SPA catch-all in production), so the build
+# happens here in CI and only the built dist/ is shipped to the VPS — nginx serves it
+# directly (same pattern already used for flow.einnovacionmx.com on this box). The VPS
+# itself never needs GitHub credentials this way (deploy keys are disabled for this repo's
+# org), only an SSH login key for the upload step.
+#
+# SSH_HOST / SSH_PRIVATE_KEY are repo secrets so migrating to the client's own VPS later
+# is just updating those two secrets — no workflow changes needed.
 
 on:
   push:
@@ -10,16 +20,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          host: 74.208.50.123
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist/ to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /var/www/logic-pos
-            git fetch --all
-            git reset --hard origin/main
-            npm install
-            npm run build
-            pm2 reload logic-pos
+          source: "dist/*"
+          target: "/var/www/logic-pos-restaurantes/dist"
+          strip_components: 1
+          overwrite: true

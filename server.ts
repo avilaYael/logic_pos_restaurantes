@@ -7,7 +7,9 @@ dotenv.config();
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = 3000;
+// Configurable so multiple sites on the same shared VPS (nginx reverse-proxying different
+// subdomains to different local ports) don't collide on the 3000 default.
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
