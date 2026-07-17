@@ -46,6 +46,7 @@ interface Table {
   currentOrderId?: string;
   shape?: 'round' | 'square';
   zone?: string;
+  precuentaPrinted?: boolean;
 }
 
 interface OrderItem {

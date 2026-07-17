@@ -381,6 +381,7 @@ interface Table {
   capacity?: number;
   status: 'libre' | 'ocupada' | 'por_cobrar';
   currentOrderId?: string;
+  precuentaPrinted?: boolean;
 }
 
 // One line inside an open order. `round` groups items sent together to the kitchen/bar;
@@ -4651,6 +4652,7 @@ export default function App() {
                   setDashboardIsManagingOrder(true);
                 }}
                 branchZones={branches.find(b => b.id === selectedBranchId)?.zones || ['Principal', 'Terraza', 'Bar/VIP']}
+                onPrintPrecuenta={handlePrintPrecuenta}
               />
             )
           )}

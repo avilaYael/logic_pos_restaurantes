@@ -14,7 +14,8 @@ import {
   Check,
   Trash2,
   Utensils,
-  FolderOpen
+  FolderOpen,
+  Printer
 } from 'lucide-react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -29,6 +30,7 @@ interface Table {
   currentOrderId?: string;
   shape?: 'round' | 'square';
   zone?: string;
+  precuentaPrinted?: boolean;
 }
 
 interface OrderItem {
@@ -64,6 +66,7 @@ interface TablesFloorViewProps {
   user: any;
   onManageOrder: (table: Table) => void;
   branchZones: string[];
+  onPrintPrecuenta?: (orderData: any, tableData: any, callbacks?: any) => void;
 }
 
 
@@ -76,7 +79,8 @@ export default function TablesFloorView({
   currentUserMember,
   user,
   onManageOrder,
-  branchZones
+  branchZones,
+  onPrintPrecuenta
 }: TablesFloorViewProps) {
   const [selectedZone, setSelectedZone] = useState<string>('Todas');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'libre' | 'ocupada' | 'por_cobrar'>('All');
@@ -115,6 +119,51 @@ export default function TablesFloorView({
       message,
       onConfirm
     });
+  };
+
+  const [isPrintingPrecuenta, setIsPrintingPrecuenta] = useState(false);
+
+  const handlePrintPrecuentaDirect = async (tableToPrint: Table) => {
+    const orderToPrint = activeOrdersMap.get(tableToPrint.id);
+    if (!orderToPrint || !activeCompanyId) return;
+
+    const sentItems = orderToPrint.items.filter(it => !!it.sentAt);
+    if (sentItems.length === 0) return;
+
+    setIsPrintingPrecuenta(true);
+    try {
+      if (onPrintPrecuenta) {
+        onPrintPrecuenta(
+          {
+            id: orderToPrint.id,
+            waiterName: orderToPrint.waiterName,
+            openedAt: orderToPrint.openedAt,
+            items: sentItems.map(it => ({ name: it.name, quantity: it.quantity, unitPrice: it.unitPrice }))
+          },
+          { name: tableToPrint.name },
+          {
+            onSuccess: async () => {
+              await updateDoc(doc(db, 'companies', activeCompanyId, 'tables', tableToPrint.id), {
+                precuentaPrinted: true
+              });
+              setActiveTable(prev => prev ? { ...prev, precuentaPrinted: true } : null);
+            },
+            onError: (msg) => {
+              console.error("Error direct printing pre-cuenta:", msg);
+            }
+          }
+        );
+      } else {
+        await updateDoc(doc(db, 'companies', activeCompanyId, 'tables', tableToPrint.id), {
+          precuentaPrinted: true
+        });
+        setActiveTable(prev => prev ? { ...prev, precuentaPrinted: true } : null);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsPrintingPrecuenta(false);
+    }
   };
 
   // Filter tables by branch
@@ -533,12 +582,17 @@ export default function TablesFloorView({
                       <span className="text-[9px] bg-white border border-slate-100 px-2 py-0.5 rounded-lg text-slate-500 font-extrabold shadow-sm">
                         {zone}
                       </span>
-                      <span 
-                        className={`w-2.5 h-2.5 rounded-full ${
-                          table.status === 'ocupada' ? 'animate-pulse' : ''
-                        }`}
-                        style={{ backgroundColor: statusColor }}
-                      />
+                      <div className="flex items-center gap-1">
+                        {table.status === 'por_cobrar' && table.precuentaPrinted === false && (
+                          <Printer className="w-3.5 h-3.5 text-amber-500 animate-bounce" title="Pre-cuenta pendiente de imprimir" />
+                        )}
+                        <span 
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            table.status === 'ocupada' || (table.status === 'por_cobrar' && table.precuentaPrinted === false) ? 'animate-pulse' : ''
+                          }`}
+                          style={{ backgroundColor: statusColor }}
+                        />
+                      </div>
                     </div>
 
                     {/* Middle: Visual representation of Table Shape */}
@@ -707,13 +761,26 @@ export default function TablesFloorView({
                   {currentUserMember?.role === 'employee' ? (
                     // Cajero (employee) specific actions
                     activeTable.status === 'por_cobrar' ? (
-                      <button
-                        type="button"
-                        onClick={() => onManageOrder(activeTable)}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
-                      >
-                        <FolderOpen className="w-3.5 h-3.5" />Cobrar Cuenta
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        {activeTable.precuentaPrinted === false && (
+                          <button
+                            type="button"
+                            onClick={() => handlePrintPrecuentaDirect(activeTable)}
+                            disabled={isPrintingPrecuenta}
+                            className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            {isPrintingPrecuenta ? 'Imprimiendo...' : 'Imprimir Pre-cuenta'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onManageOrder(activeTable)}
+                          className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5" />Cobrar Cuenta
+                        </button>
+                      </div>
                     ) : activeTable.status === 'ocupada' ? (
                       <div className="p-3 bg-rose-50/40 dark:bg-rose-950/10 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
                         <p className="text-xs font-bold text-rose-700 dark:text-rose-400">

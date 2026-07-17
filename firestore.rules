@@ -175,7 +175,8 @@ service cloud.firestore {
           && data.branchId is string && data.branchId.size() <= 128
           && (!('capacity' in data) || (data.capacity is int && data.capacity >= 0))
           && data.status is string && (data.status == 'libre' || data.status == 'ocupada' || data.status == 'por_cobrar')
-          && (!('currentOrderId' in data) || (data.currentOrderId is string && data.currentOrderId.size() <= 128) || data.currentOrderId == null);
+          && (!('currentOrderId' in data) || (data.currentOrderId is string && data.currentOrderId.size() <= 128) || data.currentOrderId == null)
+          && (!('precuentaPrinted' in data) || (data.precuentaPrinted is bool));
     }
 
     function isValidOrder(data) {
@@ -378,7 +379,7 @@ service cloud.firestore {
         // salon management and needs owner/admin (same split as the products stock-only update).
         allow update: if isVerifiedUser() && isValidId(tableId) &&
           isValidTable(incoming()) && incoming().id == tableId && (
-            (isMemberOfCompany(companyId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentOrderId']))
+            (isMemberOfCompany(companyId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentOrderId', 'precuentaPrinted']))
             || isOwnerOrAdmin(companyId)
           );
       }

@@ -41,6 +41,7 @@ interface Table {
   currentOrderId?: string;
   shape?: 'round' | 'square';
   zone?: string;
+  precuentaPrinted?: boolean;
 }
 
 interface OrderItem {
@@ -482,7 +483,8 @@ export default function ComandaView({
       });
       batch.update(doc(db, 'companies', activeCompanyId, 'tables', table.id), {
         status: 'libre',
-        currentOrderId: null
+        currentOrderId: null,
+        precuentaPrinted: false
       });
 
       await batch.commit();
@@ -530,11 +532,14 @@ export default function ComandaView({
     setIsPrintingPrecuenta(true);
 
     try {
+      const isMesero = currentUserMember?.role === 'mesero';
+
       await updateDoc(doc(db, 'companies', activeCompanyId, 'tables', table.id), {
-        status: 'por_cobrar'
+        status: 'por_cobrar',
+        precuentaPrinted: isMesero ? false : true
       });
 
-      if (onPrintPrecuenta) {
+      if (!isMesero && onPrintPrecuenta) {
         onPrintPrecuenta(
           {
             id: order.id,
@@ -553,7 +558,7 @@ export default function ComandaView({
           }
         );
       } else {
-        showToast('success', 'Cuenta solicitada', 'La cuenta ha sido solicitada correctamente.');
+        showToast('success', 'Cuenta solicitada', isMesero ? 'La cuenta ha sido solicitada a caja.' : 'La cuenta ha sido solicitada correctamente.');
       }
     } catch (err: any) {
       console.error(err);
@@ -817,7 +822,8 @@ export default function ComandaView({
                           });
                           batch.update(doc(db, 'companies', activeCompanyId, 'tables', table.id), {
                             status: 'libre',
-                            currentOrderId: null
+                            currentOrderId: null,
+                            precuentaPrinted: false
                           });
                           await batch.commit();
                           onClose();
