@@ -65,7 +65,7 @@ const BluetoothPrinter = registerPlugin<{
   listPairedDevices(): Promise<{ devices: BluetoothPrinterDevice[] }>;
   printEscPos(options: { address: string; data: string }): Promise<{ value: boolean }>;
 }>('BluetoothPrinter');
-import { buildReceiptEscPos, buildTestPrint, uint8ToBase64, columnsForPaperWidth } from './lib/escpos';
+import { buildReceiptEscPos, buildTestPrint, uint8ToBase64, columnsForPaperWidth, buildPrecuentaEscPos } from './lib/escpos';
 import { isWebUsbSupported, requestUsbPrinter, getPairedUsbPrinters, printUsb } from './lib/webUsbPrinter';
 import { isWebBluetoothSupported, requestBluetoothPrinter, printBluetooth } from './lib/webBluetoothPrinter';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
@@ -1244,9 +1244,9 @@ export default function App() {
   useEffect(() => {
     if (!user || !activeCompanyId) return;
 
-    // Check if the current user is an employee
-    const isEmployee = activeCompanyRole === 'employee';
-    if (isEmployee && currentUserMember?.assignedBranchId) {
+    // Check if the current user has branch restrictions (employee or mesero)
+    const isBranchRestricted = activeCompanyRole === 'employee' || activeCompanyRole === 'mesero';
+    if (isBranchRestricted && currentUserMember?.assignedBranchId) {
       if (selectedBranchId !== currentUserMember.assignedBranchId) {
         setSelectedBranchId(currentUserMember.assignedBranchId);
         localStorage.setItem('logic_active_branch', currentUserMember.assignedBranchId);
@@ -2160,6 +2160,250 @@ export default function App() {
           cleanup();
         }
         // Fallback for browsers that never fire `afterprint`.
+        setTimeout(cleanup, 120000);
+      }, 100);
+    });
+  };
+
+  const handlePrintPrecuenta = (
+    order: { id: string; waiterName: string; openedAt: string; items: { name: string; quantity: number; unitPrice: number }[] },
+    table: { name: string },
+    options?: { onSuccess?: () => void; onError?: (msg: string) => void }
+  ) => {
+    const ticketBusinessName = branding.displayName || (activeCompanyId ? userCompanies[activeCompanyId]?.name : '') || 'Mi Comercio';
+    const ticketTagline = branding.tagline || '';
+    const ticketLogo = (printConfig.showLogo && branding.logoUrl) ? branding.logoUrl : '';
+
+    const pw = printConfig.paperWidth;
+    const isA4 = pw === 'A4';
+    const pageSize = isA4 ? 'A4' : `${pw} auto`;
+    const pageMargin = isA4 ? '1cm' : '0mm';
+    const bodyMaxWidth = pw === '58mm' ? '220px' : pw === '80mm' ? '302px' : '640px';
+    const bodyPadding = isA4 ? '20px 40px' : '10px 14px';
+    const baseFontSize = pw === '58mm' ? '11px' : '12px';
+
+    const subtotal = order.items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+    const tax = printConfig.showTaxLine ? subtotal * 0.16 : 0;
+    const total = subtotal;
+
+    const timestampFormatted = new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Inner ticket markup
+    const ticketBodyHtml = `
+          <div class="header">
+            ${ticketLogo ? `<img src="${ticketLogo}" class="logo" alt="logo">` : ''}
+            <p class="biz-name">${ticketBusinessName}</p>
+            ${ticketTagline ? `<p class="tagline">${ticketTagline}</p>` : ''}
+            <p class="txn-id" style="font-weight: 900; font-size: 13px; text-decoration: underline; margin-top: 4px;">*** PRE-CUENTA ***</p>
+            <p class="txn-id" style="font-weight: 900; font-size: 10px; margin-bottom: 6px;">NO ES COMPROBANTE DE PAGO</p>
+          </div>
+          <hr class="sep">
+          <p><b>Mesa:</b> ${table.name}</p>
+          <p><b>Fecha Solicitud:</b> ${timestampFormatted}</p>
+          <p><b>Atendido por:</b> ${order.waiterName}</p>
+          <p><b>ID Comanda:</b> ${order.id.slice(-6).toUpperCase()}</p>
+          <hr class="sep">
+          <p class="bold">CONSUMO PRELIMINAR:</p>
+          ${order.items.map(it => `
+            <div class="row">
+              <span>${it.quantity}x ${it.name}</span>
+              <span>${formatMXN(it.unitPrice * it.quantity)}</span>
+            </div>
+          `).join('')}
+          <hr class="sep">
+          <div class="row"><span>Subtotal:</span><span>${formatMXN(subtotal)}</span></div>
+          ${printConfig.showTaxLine ? `<div class="row"><span>IVA (16%):</span><span>${formatMXN(tax)}</span></div>` : ''}
+          <div class="row total-row"><span>TOTAL:</span><span>${formatMXN(total)}</span></div>
+          <div class="footer">
+            <p class="thanks" style="font-size: 11px; margin-top: 8px; font-weight: 900;">FAVOR DE PAGAR EN CAJA</p>
+            <p class="legal">Comprobante preliminar sin validez fiscal</p>
+          </div>
+    `;
+
+    const ticketStyles = (scope: string) => `
+            ${scope} { font-family: 'Courier New', Courier, monospace; font-size: ${baseFontSize}; line-height: 1.45; color: #000; max-width: ${bodyMaxWidth}; margin: 0 auto; background: #fff; box-sizing: border-box; }
+            ${scope} * { box-sizing: border-box; }
+            ${scope} .header { text-align: center; margin-bottom: 6px; }
+            ${scope} .logo { display: block; margin: 0 auto 6px; width: 64px; height: 64px; object-fit: contain; filter: grayscale(1) contrast(1.1); }
+            ${scope} .biz-name { font-size: ${isA4 ? '20px' : '15px'}; font-weight: 900; letter-spacing: 0.5px; margin: 0 0 2px; text-transform: uppercase; }
+            ${scope} .tagline { font-size: 9px; margin: 0 0 4px; color: #555; }
+            ${scope} .txn-id { font-size: 9px; color: #666; margin: 0; }
+            ${scope} p { margin: 0 0 4px; }
+            ${scope} .sep { border: none; border-top: 1px dashed #555; margin: 6px 0; }
+            ${scope} .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            ${scope} .bold { font-weight: bold; }
+            ${scope} .total-row { font-size: ${isA4 ? '16px' : '13px'}; font-weight: 900; border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; }
+            ${scope} .footer { text-align: center; margin-top: 8px; }
+            ${scope} .footer .thanks { font-weight: 900; font-size: ${isA4 ? '14px' : '12px'}; }
+            ${scope} .footer .legal { font-size: 9px; color: #777; margin-top: 3px; }
+    `;
+
+    if (isNativePlatform && bluetoothPrinter) {
+      const columns = columnsForPaperWidth(printConfig.paperWidth);
+      const bytes = buildPrecuentaEscPos({
+        businessName: ticketBusinessName,
+        tagline: ticketTagline,
+        tableName: table.name,
+        waiterName: order.waiterName,
+        orderId: order.id,
+        timestamp: timestampFormatted,
+        items: order.items,
+        showTaxLine: printConfig.showTaxLine,
+        columns,
+        formatMXN
+      });
+      BluetoothPrinter.printEscPos({ address: bluetoothPrinter.address, data: uint8ToBase64(bytes) })
+        .then(() => options?.onSuccess?.())
+        .catch(err => {
+          console.error('Bluetooth print error:', err);
+          const msg = `No se pudo imprimir en "${bluetoothPrinter.name}".`;
+          if (options?.onError) options.onError(msg);
+          else alert(msg);
+        });
+      return;
+    }
+
+    if (isNativePlatform) {
+      const popupHtml = `
+        <html>
+          <head>
+            <title>Precuenta ${table.name}</title>
+            <style>
+              ${ticketStyles('body')}
+              body { padding: ${bodyPadding}; }
+            </style>
+          </head>
+          <body>${ticketBodyHtml}</body>
+        </html>
+      `;
+      ReceiptPrinter.print({ html: popupHtml, jobName: `Precuenta ${table.name}` })
+        .then(() => options?.onSuccess?.())
+        .catch(err => {
+          console.error('Native print error:', err);
+          const msg = 'No se pudo abrir el diálogo de impresión.';
+          if (options?.onError) options.onError(msg);
+          else alert(msg);
+        });
+      return;
+    }
+
+    if (webUsbDevice || webBluetoothDevice) {
+      const columns = columnsForPaperWidth(printConfig.paperWidth);
+      const bytes = buildPrecuentaEscPos({
+        businessName: ticketBusinessName,
+        tagline: ticketTagline,
+        tableName: table.name,
+        waiterName: order.waiterName,
+        orderId: order.id,
+        timestamp: timestampFormatted,
+        items: order.items,
+        showTaxLine: printConfig.showTaxLine,
+        columns,
+        formatMXN
+      });
+      const printPromise = webUsbDevice
+        ? printUsb(webUsbDevice, bytes)
+        : printBluetooth(webBluetoothDevice!, bytes);
+      printPromise
+        .then(() => options?.onSuccess?.())
+        .catch(err => {
+          console.error('Web printer error:', err);
+          const msg = `No se pudo imprimir en la impresora. ${err?.message || ''}`;
+          if (options?.onError) options.onError(msg);
+          else alert(msg);
+        });
+      return;
+    }
+
+    options?.onSuccess?.();
+
+    const printScript = `
+      <script>
+        window.addEventListener('load', function () {
+          if (/Android/i.test(navigator.userAgent)) {
+            var wasHidden = false;
+            document.addEventListener('visibilitychange', function () {
+              if (document.visibilityState === 'hidden') { wasHidden = true; }
+              else if (wasHidden) { window.close(); }
+            });
+            window.print();
+          } else {
+            window.print();
+            window.close();
+          }
+        });
+      <\/script>
+    `;
+    const popupHtml = `
+      <html>
+        <head>
+          <title>Precuenta ${table.name}</title>
+          <style>
+            ${ticketStyles('body')}
+            body { padding: ${bodyPadding}; }
+            @media print {
+              @page { size: ${pageSize}; margin: ${pageMargin}; }
+              body { padding: 0; margin: 0 auto; }
+            }
+          </style>
+        </head>
+        <body>${ticketBodyHtml}</body>
+      </html>
+    `.replace('</body>', printScript + '</body>');
+
+    const ticketWindow = window.open('', '_blank');
+    if (ticketWindow) {
+      ticketWindow.document.open();
+      ticketWindow.document.write(popupHtml);
+      ticketWindow.document.close();
+      return;
+    }
+
+    document.getElementById('logicpos-print-root')?.remove();
+    document.getElementById('logicpos-print-style')?.remove();
+
+    const printStyle = document.createElement('style');
+    printStyle.id = 'logicpos-print-style';
+    printStyle.textContent = `
+      #logicpos-print-root { display: none; }
+      ${ticketStyles('#logicpos-print-root')}
+      @media print {
+        @page { size: ${pageSize}; margin: ${pageMargin}; }
+        html, body { background: #fff !important; }
+        body > *:not(#logicpos-print-root) { display: none !important; }
+        #logicpos-print-root { display: block !important; padding: ${bodyPadding}; }
+      }
+    `;
+
+    const printRoot = document.createElement('div');
+    printRoot.id = 'logicpos-print-root';
+    printRoot.innerHTML = ticketBodyHtml;
+
+    document.body.appendChild(printStyle);
+    document.body.appendChild(printRoot);
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      printRoot.remove();
+      printStyle.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    const images = Array.from(printRoot.querySelectorAll('img'));
+    const imagesReady = Promise.all(
+      images.map(img => img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); }))
+    );
+    imagesReady.then(() => {
+      setTimeout(() => {
+        try {
+          window.print();
+        } catch (err) {
+          console.error('Print error:', err);
+          cleanup();
+        }
         setTimeout(cleanup, 120000);
       }, 100);
     });
@@ -3400,6 +3644,7 @@ export default function App() {
         }}
         printConfig={printConfig}
         onPrintReceipt={handlePrintReceipt}
+        onPrintPrecuenta={handlePrintPrecuenta}
       />
     );
   }
@@ -3485,20 +3730,62 @@ export default function App() {
                 {user.displayName ? user.displayName[0].toUpperCase() : 'U'}
               </div>
             )}
-            <div className="hidden xl:block text-left">
-              <p className="text-[11px] font-bold text-white leading-tight truncate max-w-[120px]">{user.displayName || 'Comerciante'}</p>
-              <p className="text-[9px] leading-none truncate max-w-[120px]" style={{ color: 'color-mix(in srgb, var(--brand-primary) 70%, white)' }}>{user.email}</p>
+            <div className="hidden md:block text-left">
+              <p className="text-[11px] font-bold text-white leading-tight truncate max-w-[120px]">
+                {currentUserMember?.name || user.displayName || 'Comerciante'}
+              </p>
+              {(() => {
+                const role = currentUserMember?.role;
+                let colorClass = 'text-slate-400';
+                let Icon = Users;
+                let label = 'Usuario';
+
+                if (role === 'owner') {
+                  colorClass = 'text-amber-500';
+                  Icon = ShieldCheck;
+                  label = 'Dueño';
+                } else if (role === 'master_admin') {
+                  colorClass = 'text-purple-400';
+                  Icon = ShieldCheck;
+                  label = 'Master Admin';
+                } else if (role === 'admin') {
+                  colorClass = 'text-blue-400';
+                  Icon = ShieldCheck;
+                  label = 'Administrador';
+                } else if (role === 'employee') {
+                  colorClass = 'text-emerald-400';
+                  Icon = CircleDollarSign;
+                  label = 'Cajero';
+                } else if (role === 'mesero') {
+                  colorClass = 'text-amber-500';
+                  Icon = Utensils;
+                  label = 'Mesero';
+                } else if (!role) {
+                  colorClass = 'text-amber-500';
+                  Icon = ShieldCheck;
+                  label = 'Dueño';
+                }
+
+                return (
+                  <span className={`text-[9px] font-extrabold uppercase tracking-widest flex items-center gap-1 mt-0.5 ${colorClass}`}>
+                    <Icon className="w-2.5 h-2.5 shrink-0" />
+                    <span>{label}</span>
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex space-x-1 lg:space-x-1.5 flex-shrink-0">
-              <button
-                onClick={() => { localStorage.removeItem(`logic_active_company_${user.uid}`); setActiveCompanyId(null); }}
-                className="text-[9px] lg:text-[10px] text-white font-bold px-2 lg:px-2.5 py-1 rounded-lg cursor-pointer transition select-none border"
-                style={{ backgroundColor: 'color-mix(in srgb, var(--brand-dark) 70%, black)', borderColor: 'color-mix(in srgb, var(--brand-primary) 35%, transparent)' }}
-                title="Cambiar de comercio / empresa"
-              >
-                <span className="hidden sm:inline">Empresas</span>
-                <span className="sm:hidden">Emp</span>
-              </button>
+              {(!currentUserMember || currentUserMember?.role === 'owner' || currentUserMember?.role === 'master_admin') && (
+                <button
+                  onClick={() => { localStorage.removeItem(`logic_active_company_${user.uid}`); setActiveCompanyId(null); }}
+                  className="text-[9px] lg:text-[10px] text-white font-bold px-2 lg:px-2.5 py-1 rounded-lg cursor-pointer transition select-none border"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--brand-dark) 70%, black)', borderColor: 'color-mix(in srgb, var(--brand-primary) 35%, transparent)' }}
+                  title="Cambiar de comercio / empresa"
+                >
+                  <span className="hidden sm:inline">Empresas</span>
+                  <span className="sm:hidden">Emp</span>
+                </button>
+              )}
               <button
                 onClick={() => signOut(auth)}
                 className="text-[9px] lg:text-[10px] bg-red-700 hover:bg-red-600 border border-red-600 text-white font-bold px-2 lg:px-2.5 py-1 rounded-lg cursor-pointer transition select-none"
@@ -3678,6 +3965,7 @@ export default function App() {
                 onSaleComplete={setLastCompletedSale}
                 printConfig={printConfig}
                 onPrintReceipt={handlePrintReceipt}
+                onPrintPrecuenta={handlePrintPrecuenta}
               />
             ) : (
               <TablesFloorView

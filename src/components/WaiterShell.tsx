@@ -91,6 +91,7 @@ interface WaiterShellProps {
   onLeaveCompany?: () => void;
   printConfig?: any;
   onPrintReceipt?: (sale: any, options?: any) => void;
+  onPrintPrecuenta?: (order: any, table: any, options?: any) => void;
 }
 
 
@@ -113,7 +114,8 @@ export default function WaiterShell({
   onSwitchCompany,
   onLeaveCompany,
   printConfig,
-  onPrintReceipt
+  onPrintReceipt,
+  onPrintPrecuenta
 }: WaiterShellProps) {
   const [activeTab, setActiveTab] = useState<'tables' | 'my-orders'>('tables');
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
@@ -284,6 +286,7 @@ export default function WaiterShell({
               onSaleComplete={onSaleComplete}
               printConfig={printConfig}
               onPrintReceipt={onPrintReceipt}
+              onPrintPrecuenta={onPrintPrecuenta}
             />
           ) : (
             <TablesFloorView

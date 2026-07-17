@@ -213,3 +213,66 @@ export function buildTestPrint(columns: number): Uint8Array {
   b.cut();
   return b.toUint8Array();
 }
+
+export interface EscPosPrecuentaParams {
+  businessName: string;
+  tagline?: string;
+  tableName: string;
+  waiterName: string;
+  orderId: string;
+  timestamp: string;
+  items: { name: string; quantity: number; unitPrice: number }[];
+  showTaxLine: boolean;
+  columns: number;
+  formatMXN: (n: number) => string;
+}
+
+export function buildPrecuentaEscPos(p: EscPosPrecuentaParams): Uint8Array {
+  const w = p.columns;
+  const b = new EscPosBuilder();
+
+  b.init();
+  b.align('center');
+  b.bold(true).doubleSize(true);
+  b.line(p.businessName.toUpperCase());
+  b.doubleSize(false).bold(false);
+  if (p.tagline) b.line(p.tagline);
+  b.bold(true).line('*** PRE-CUENTA ***');
+  b.line('NO ES COMPROBANTE DE PAGO');
+  b.bold(false);
+
+  b.align('left');
+  b.line(sep(w));
+  b.line(`Mesa: ${p.tableName}`);
+  b.line(`Fecha: ${p.timestamp}`);
+  b.line(`Atendido por: ${p.waiterName}`);
+  b.line(`Comanda: ${p.orderId.slice(-6).toUpperCase()}`);
+  b.line(sep(w));
+
+  b.bold(true).line('CONSUMO PRELIMINAR:').bold(false);
+  for (const it of p.items) {
+    b.line(row(`${it.quantity}x ${it.name}`, p.formatMXN(it.unitPrice * it.quantity), w));
+  }
+  b.line(sep(w));
+
+  const subtotal = p.items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+  const tax = p.showTaxLine ? subtotal * 0.16 : 0;
+  const total = subtotal;
+
+  b.line(row('Subtotal:', p.formatMXN(subtotal), w));
+  if (p.showTaxLine) {
+    b.line(row('IVA (16%):', p.formatMXN(tax), w));
+  }
+  b.bold(true);
+  b.line(row('TOTAL:', p.formatMXN(total), w));
+  b.bold(false);
+
+  b.feed(1);
+  b.align('center');
+  b.bold(true).line('FAVOR DE PAGAR EN CAJA').bold(false);
+  b.line('Comprobante preliminar sin validez fiscal');
+  b.feed(3);
+  b.cut();
+
+  return b.toUint8Array();
+}

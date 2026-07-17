@@ -91,6 +91,7 @@ interface ComandaViewProps {
   onSaleComplete: (sale: any) => void;
   printConfig?: PrintConfig;
   onPrintReceipt?: (sale: any, options?: any) => void;
+  onPrintPrecuenta?: (order: any, table: any, options?: any) => void;
 }
 
 const getProductStock = (prod: Product, branchId: string): number => {
@@ -111,7 +112,8 @@ export default function ComandaView({
   onClose,
   onSaleComplete,
   printConfig,
-  onPrintReceipt
+  onPrintReceipt,
+  onPrintPrecuenta
 }: ComandaViewProps) {
   // Navigation & Search State
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,6 +130,7 @@ export default function ComandaView({
   const [requiresInvoice, setRequiresInvoice] = useState(false);
   const [receivedCashAmount, setReceivedCashAmount] = useState('');
   const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
+  const [isPrintingPrecuenta, setIsPrintingPrecuenta] = useState(false);
 
   // State for Custom Confirm Modal
   const [confirmModal, setConfirmModal] = useState<{
@@ -510,6 +513,56 @@ export default function ComandaView({
     }
   };
 
+  const handleRequestPrecuenta = async () => {
+    if (!order || !activeCompanyId) return;
+
+    if (groupedRounds.draft.length > 0) {
+      showToast('warning', 'Ronda pendiente', 'Hay artículos en borrador que aún no se enviaron a cocina/barra. Envíalos o elimínalos antes de pedir la cuenta.');
+      return;
+    }
+
+    const sentItems = order.items.filter(it => !!it.sentAt);
+    if (sentItems.length === 0) {
+      showToast('warning', 'Sin pedido enviado', 'No se ha enviado ningún pedido a cocina o barra. Agrega artículos y envíalos antes de pedir la cuenta.');
+      return;
+    }
+
+    setIsPrintingPrecuenta(true);
+
+    try {
+      await updateDoc(doc(db, 'companies', activeCompanyId, 'tables', table.id), {
+        status: 'por_cobrar'
+      });
+
+      if (onPrintPrecuenta) {
+        onPrintPrecuenta(
+          {
+            id: order.id,
+            waiterName: order.waiterName,
+            openedAt: order.openedAt,
+            items: sentItems.map(it => ({ name: it.name, quantity: it.quantity, unitPrice: it.unitPrice }))
+          },
+          { name: table.name },
+          {
+            onSuccess: () => {
+              showToast('success', 'Pre-cuenta impresa', 'El ticket de pre-cuenta se envió a la impresora.');
+            },
+            onError: (msg) => {
+              showToast('error', 'Error al imprimir pre-cuenta', msg);
+            }
+          }
+        );
+      } else {
+        showToast('success', 'Cuenta solicitada', 'La cuenta ha sido solicitada correctamente.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast('error', 'Error al solicitar cuenta', err.message || String(err));
+    } finally {
+      setIsPrintingPrecuenta(false);
+    }
+  };
+
   const elapsedMinutes = order ? Math.floor((Date.now() - Date.parse(order.openedAt)) / 60000) : 0;
   const changeAmount = receivedCashAmount ? parseFloat(receivedCashAmount) - totals.total : 0;
 
@@ -698,26 +751,56 @@ export default function ComandaView({
                   </span>
                 </div>
               ) : order.items.length > 0 ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (groupedRounds.draft.length > 0) {
-                        showToast('warning', 'Ronda pendiente', 'Hay artículos en borrador que aún no se enviaron a cocina/barra. Envíalos o elimínalos antes de cobrar.');
-                        return;
-                      }
-                      const hasSentItems = order.items.some(it => !!it.sentAt);
-                      if (!hasSentItems) {
-                        showToast('warning', 'Sin pedido enviado', 'No se ha enviado ningún pedido a cocina o barra. Agrega artículos y envíalos antes de cobrar la mesa.');
-                        return;
-                      }
-                      setIsCheckoutOpen(true);
-                    }}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer text-center uppercase tracking-wider active:scale-95 flex items-center justify-center gap-1.5"
-                  >
-                    <DollarSign className="w-4 h-4" />Cobrar Cuenta
-                  </button>
-                </div>
+                currentUserMember?.role === 'mesero' ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRequestPrecuenta}
+                      disabled={isPrintingPrecuenta}
+                      className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer text-center uppercase tracking-wider active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Ticket className="w-4 h-4" />
+                      <span>
+                        {isPrintingPrecuenta
+                          ? 'Imprimiendo...'
+                          : table.status === 'por_cobrar'
+                          ? 'Reimprimir Pre-cuenta'
+                          : 'Pedir Cuenta / Pre-cuenta'}
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRequestPrecuenta}
+                      disabled={isPrintingPrecuenta}
+                      className="py-3 px-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-355 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
+                      title="Imprimir Pre-cuenta"
+                    >
+                      <Ticket className="w-4 h-4" />
+                      <span className="hidden sm:inline">Pre-cuenta</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (groupedRounds.draft.length > 0) {
+                          showToast('warning', 'Ronda pendiente', 'Hay artículos en borrador que aún no se enviaron a cocina/barra. Envíalos o elimínalos antes de cobrar.');
+                          return;
+                        }
+                        const hasSentItems = order.items.some(it => !!it.sentAt);
+                        if (!hasSentItems) {
+                          showToast('warning', 'Sin pedido enviado', 'No se ha enviado ningún pedido a cocina o barra. Agrega artículos y envíalos antes de cobrar la mesa.');
+                          return;
+                        }
+                        setIsCheckoutOpen(true);
+                      }}
+                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer text-center uppercase tracking-wider active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      <DollarSign className="w-4 h-4" />Cobrar Cuenta
+                    </button>
+                  </div>
+                )
               ) : currentUserMember?.role !== 'mesero' ? (
                 <button
                   type="button"

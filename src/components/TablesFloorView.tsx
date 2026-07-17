@@ -354,14 +354,16 @@ export default function TablesFloorView({
         </div>
 
         {/* Action button */}
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2.5 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition select-none active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Agregar Mesa</span>
-        </button>
+        {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin' || currentUserMember?.role === 'master_admin') && (
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2.5 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition select-none active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agregar Mesa</span>
+          </button>
+        )}
       </div>
 
       {/* Summary Statistics Cards */}
@@ -438,13 +440,15 @@ export default function TablesFloorView({
               {zone}
             </button>
           ))}
-          <button
-            onClick={() => setIsZonesModalOpen(true)}
-            title="Editar zonas del salón"
-            className="p-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:text-[var(--brand-primary,#6366f1)] hover:border-[var(--brand-primary,#6366f1)] transition cursor-pointer shrink-0"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          {(currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin' || currentUserMember?.role === 'master_admin') && (
+            <button
+              onClick={() => setIsZonesModalOpen(true)}
+              title="Editar zonas del salón"
+              className="p-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:text-[var(--brand-primary,#6366f1)] hover:border-[var(--brand-primary,#6366f1)] transition cursor-pointer shrink-0"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Legend Indicator */}
@@ -700,47 +704,73 @@ export default function TablesFloorView({
 
                 {/* Bottom Action buttons */}
                 <div className="space-y-2.5 pt-5 border-t border-slate-100 dark:border-slate-800 mt-5">
-                  {activeTable.status === 'libre' ? (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTable(activeTable)}
-                      className="w-full py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
-                    >
-                      Apertura de Mesa
-                    </button>
-                  ) : (
-                    <div className="flex flex-col gap-2">
+                  {currentUserMember?.role === 'employee' ? (
+                    // Cajero (employee) specific actions
+                    activeTable.status === 'por_cobrar' ? (
                       <button
                         type="button"
                         onClick={() => onManageOrder(activeTable)}
-                        className="w-full py-3 bg-slate-850 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
                       >
-                        <FolderOpen className="w-3.5 h-3.5" />Gestionar Comanda / Cobrar
+                        <FolderOpen className="w-3.5 h-3.5" />Cobrar Cuenta
                       </button>
+                    ) : activeTable.status === 'ocupada' ? (
+                      <div className="p-3 bg-rose-50/40 dark:bg-rose-950/10 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
+                        <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
+                          Mesa en consumo. Esperando a que el mesero solicite la cuenta.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-center border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                          Mesa disponible. Apertura exclusiva para Meseros.
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    // Regular actions for Owner, Admin, Waiter
+                    activeTable.status === 'libre' ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          const nextStatus = activeTable.status === 'ocupada' ? 'por_cobrar' : 'ocupada';
-                          updateDoc(doc(db, 'companies', activeCompanyId, 'tables', activeTable.id), {
-                            status: nextStatus
-                          }).then(() => {
-                            setActiveTable(prev => prev ? { ...prev, status: nextStatus } : null);
-                          }).catch(err => {
-                            handleFirestoreError(err, OperationType.UPDATE, `companies/${activeCompanyId}/tables/${activeTable.id}`);
-                          });
-                        }}
-                        className={`w-full py-2 border rounded-xl text-xs font-black text-center transition cursor-pointer uppercase tracking-wider ${
-                          activeTable.status === 'ocupada'
-                            ? 'border-amber-300 bg-amber-50/30 text-amber-700 hover:bg-amber-50'
-                            : 'border-rose-300 bg-rose-50/30 text-rose-700 hover:bg-rose-50'
-                        }`}
+                        onClick={() => handleOpenTable(activeTable)}
+                        className="w-full py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
                       >
-                        {activeTable.status === 'ocupada' ? 'Marcar Por Cobrar' : 'Regresar a Ocupada'}
+                        Apertura de Mesa
                       </button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onManageOrder(activeTable)}
+                          className="w-full py-3 bg-slate-850 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5" />Gestionar Comanda / Cobrar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextStatus = activeTable.status === 'ocupada' ? 'por_cobrar' : 'ocupada';
+                            updateDoc(doc(db, 'companies', activeCompanyId, 'tables', activeTable.id), {
+                              status: nextStatus
+                            }).then(() => {
+                              setActiveTable(prev => prev ? { ...prev, status: nextStatus } : null);
+                            }).catch(err => {
+                              handleFirestoreError(err, OperationType.UPDATE, `companies/${activeCompanyId}/tables/${activeTable.id}`);
+                            });
+                          }}
+                          className={`w-full py-2 border rounded-xl text-xs font-black text-center transition cursor-pointer uppercase tracking-wider ${
+                            activeTable.status === 'ocupada'
+                              ? 'border-amber-300 bg-amber-50/30 text-amber-700 hover:bg-amber-50'
+                              : 'border-rose-300 bg-rose-50/30 text-rose-700 hover:bg-rose-50'
+                          }`}
+                        >
+                          {activeTable.status === 'ocupada' ? 'Marcar Por Cobrar' : 'Regresar a Ocupada'}
+                        </button>
+                      </div>
+                    )
                   )}
 
-                  {activeTable.status !== 'libre' && currentUserMember?.role !== 'mesero' && (
+                  {activeTable.status !== 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
                     <button
                       type="button"
                       onClick={() => handleReleaseTable(activeTable)}
@@ -750,7 +780,7 @@ export default function TablesFloorView({
                     </button>
                   )}
 
-                  {activeTable.status === 'libre' && (
+                  {activeTable.status === 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
                     <button
                       type="button"
                       onClick={() => handleDeleteTable(activeTable)}
