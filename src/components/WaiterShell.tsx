@@ -196,9 +196,9 @@ export default function WaiterShell({
 
         {/* User profile & controls */}
         <div className="flex items-center space-x-2">
-          <div className="hidden sm:flex flex-col text-right mr-1">
-            <span className="text-xs font-black text-white">{currentUserMember?.name || user.displayName || 'Mesero'}</span>
-            <span className="text-[9px] text-amber-500 font-extrabold uppercase tracking-widest flex items-center gap-1"><Utensils className="w-2.5 h-2.5" />Mesero</span>
+          <div className="flex flex-col text-right mr-1">
+            <span className="text-[10px] sm:text-xs font-black text-white truncate max-w-[65px] xs:max-w-[85px] sm:max-w-[150px]">{currentUserMember?.name || user.displayName || 'Mesero'}</span>
+            <span className="text-[8px] sm:text-[9px] text-amber-500 font-extrabold uppercase tracking-widest flex items-center justify-end gap-0.5"><Utensils className="w-2 h-2 sm:w-2.5 sm:h-2.5" />Mesero</span>
           </div>
           
           {/* Switch Company if multi-company */}

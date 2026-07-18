@@ -1025,6 +1025,49 @@ export default function CompanySettingsView({
     }
   };
 
+  if (currentUserRole === 'employee') {
+    return (
+      <div id="company-settings-section" className="flex justify-center items-center py-8 select-none">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm text-center max-w-sm w-full space-y-6">
+          {branding.logoUrl ? (
+            <div className="mx-auto w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm">
+              <img src={branding.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="mx-auto w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <Building2 className="w-6 h-6" />
+            </div>
+          )}
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-lg text-slate-800 truncate">{companyName}</h3>
+            <p className="text-[11px] font-bold uppercase text-indigo-500 py-0.5 px-2 bg-indigo-50 inline-block rounded">
+              Rol: Cajero / Empleado
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-1.5 shadow-inner">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Código de Comercio (ID de Empresa)</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-black text-slate-700 bg-white border border-slate-200 px-3 py-2.5 rounded-xl flex-grow select-all break-all shadow-sm">
+                {companyId}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(companyId);
+                  alert('¡Código de Comercio copiado al portapapeles!');
+                }}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow cursor-pointer transition active:scale-95"
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="company-settings-section" className="grid grid-cols-1 lg:grid-cols-12 gap-6 select-none">
       

@@ -93,6 +93,7 @@ interface ComandaViewProps {
   printConfig?: PrintConfig;
   onPrintReceipt?: (sale: any, options?: any) => void;
   onPrintPrecuenta?: (order: any, table: any, options?: any) => void;
+  cashRegisterIsOpen?: boolean;
 }
 
 const getProductStock = (prod: Product, branchId: string): number => {
@@ -114,11 +115,13 @@ export default function ComandaView({
   onSaleComplete,
   printConfig,
   onPrintReceipt,
-  onPrintPrecuenta
+  onPrintPrecuenta,
+  cashRegisterIsOpen = true
 }: ComandaViewProps) {
   // Navigation & Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [activeMobileTab, setActiveMobileTab] = useState<'comanda' | 'menu'>('comanda');
 
   // Checkout State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -574,8 +577,43 @@ export default function ComandaView({
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] overflow-hidden">
       
+      {/* Mobile Tab Switcher */}
+      {order && (
+        <div className="flex lg:hidden bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0 gap-1 mb-1">
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab('comanda')}
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeMobileTab === 'comanda'
+                ? 'bg-white text-slate-800 shadow-sm border border-slate-150'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Ticket className="w-3.5 h-3.5" />
+            <span>Ver Comanda</span>
+            {groupedRounds.draft.length > 0 && (
+              <span className="bg-rose-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {groupedRounds.draft.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab('menu')}
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeMobileTab === 'menu'
+                ? 'bg-white text-slate-800 shadow-sm border border-slate-150'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Menú / Catálogo</span>
+          </button>
+        </div>
+      )}
+
       {/* LEFT COLUMN: Order status, round details, and checkout trigger */}
-      <div className="lg:w-96 flex flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
+      <div className={`${activeMobileTab === 'comanda' ? 'flex' : 'hidden'} lg:flex-1 lg:max-w-[384px] flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full`}>
         
         {/* Table Details Header */}
         <div className="flex justify-between items-start pb-4 border-b border-slate-100 shrink-0">
@@ -789,6 +827,10 @@ export default function ComandaView({
                     <button
                       type="button"
                       onClick={() => {
+                        if (!cashRegisterIsOpen) {
+                          showToast('warning', 'Caja cerrada', 'No se pueden cobrar cuentas con la caja cerrada. Por favor, realiza la apertura de caja desde el panel de control.');
+                          return;
+                        }
                         if (groupedRounds.draft.length > 0) {
                           showToast('warning', 'Ronda pendiente', 'Hay artículos en borrador que aún no se enviaron a cocina/barra. Envíalos o elimínalos antes de cobrar.');
                           return;
@@ -800,7 +842,11 @@ export default function ComandaView({
                         }
                         setIsCheckoutOpen(true);
                       }}
-                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer text-center uppercase tracking-wider active:scale-95 flex items-center justify-center gap-1.5"
+                      className={`flex-1 py-3 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer text-center uppercase tracking-wider active:scale-95 flex items-center justify-center gap-1.5 ${
+                        cashRegisterIsOpen
+                          ? 'bg-emerald-600 hover:bg-emerald-700'
+                          : 'bg-slate-400 cursor-not-allowed opacity-60'
+                      }`}
                     >
                       <DollarSign className="w-4 h-4" />Cobrar Cuenta
                     </button>
@@ -845,7 +891,7 @@ export default function ComandaView({
 
       {/* RIGHT COLUMN: Product Catalog selection */}
       {order && (
-        <div className="flex-grow flex flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full">
+        <div className={`${activeMobileTab === 'menu' ? 'flex-grow' : 'hidden'} lg:flex flex-grow flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden h-full`}>
           
           {/* Search and Categories bar */}
           <div className="space-y-3 shrink-0 pb-3 border-b border-slate-100">

@@ -4400,14 +4400,14 @@ export default function App() {
               already returned early otherwise. */}
           <div className="flex items-center space-x-1.5 lg:space-x-2.5 px-2 lg:px-3 py-1 lg:py-1.5 rounded-xl border" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-dark) 45%, transparent)', borderColor: 'color-mix(in srgb, var(--brand-primary) 30%, transparent)' }}>
             {user.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || ''} className="hidden sm:block w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2" style={{ borderColor: 'var(--brand-primary)' }} referrerPolicy="no-referrer" />
+              <img src={user.photoURL} alt={user.displayName || ''} className="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2" style={{ borderColor: 'var(--brand-primary)' }} referrerPolicy="no-referrer" />
             ) : (
-              <div className="hidden sm:flex w-5 h-5 lg:w-6 lg:h-6 rounded-full font-black text-xs text-center leading-6 text-white items-center justify-center" style={{ backgroundColor: 'var(--brand-primary)' }}>
+              <div className="flex w-5 h-5 lg:w-6 lg:h-6 rounded-full font-black text-xs text-center leading-6 text-white items-center justify-center" style={{ backgroundColor: 'var(--brand-primary)' }}>
                 {user.displayName ? user.displayName[0].toUpperCase() : 'U'}
               </div>
             )}
-            <div className="hidden md:block text-left">
-              <p className="text-[11px] font-bold text-white leading-tight truncate max-w-[120px]">
+            <div className="flex flex-col text-left">
+              <p className="text-[10px] sm:text-[11px] font-bold text-white leading-tight truncate max-w-[60px] xs:max-w-[80px] sm:max-w-[120px]">
                 {currentUserMember?.name || user.displayName || 'Comerciante'}
               </p>
               {(() => {
@@ -4439,8 +4439,8 @@ export default function App() {
                 }
 
                 return (
-                  <span className={`text-[9px] font-extrabold uppercase tracking-widest flex items-center gap-1 mt-0.5 ${colorClass}`}>
-                    <Icon className="w-2.5 h-2.5 shrink-0" />
+                  <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase tracking-widest flex items-center gap-0.5 mt-0.5 ${colorClass}`}>
+                    <Icon className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0" />
                     <span>{label}</span>
                   </span>
                 );
@@ -4535,15 +4535,15 @@ export default function App() {
         {/* Mobile Menu Overlay */}
         {isMobileMenuOpen && (
           <div 
-            className="lg:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40"
+            className="lg:hidden fixed top-[60px] inset-x-0 bottom-0 bg-slate-900/50 backdrop-blur-sm z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
 
         {/* Sleek Sidebar Navigation */}
         <nav className={`${
-          isMobileMenuOpen ? 'flex' : 'hidden'
-        } lg:flex flex-col bg-white border-r border-slate-200/80 w-64 justify-start py-6 space-y-1.5 px-2 overflow-y-auto scrollbar-none absolute lg:relative z-50 h-full lg:h-auto shadow-2xl lg:shadow-none top-0 left-0 transition-transform`}>
+          isMobileMenuOpen ? 'fixed top-[60px] bottom-0 left-0 flex h-[calc(100vh-60px)]' : 'absolute top-0 left-0 hidden lg:flex h-full'
+        } lg:relative lg:top-auto lg:bottom-auto lg:h-auto flex-col bg-white border-r border-slate-200/80 w-64 justify-start py-6 space-y-1.5 px-2 overflow-y-auto scrollbar-none z-50 shadow-2xl lg:shadow-none transition-transform`}>
           
           {[
             ...(activeCompany?.businessType === 'restaurante' ? [
@@ -4653,6 +4653,7 @@ export default function App() {
                 printConfig={printConfig}
                 onPrintReceipt={handlePrintReceipt}
                 onPrintPrecuenta={handlePrintPrecuenta}
+                cashRegisterIsOpen={cashRegister.isOpen}
               />
             ) : (
               <TablesFloorView
@@ -4669,6 +4670,7 @@ export default function App() {
                 }}
                 branchZones={branches.find(b => b.id === selectedBranchId)?.zones || ['Principal', 'Terraza', 'Bar/VIP']}
                 onPrintPrecuenta={handlePrintPrecuenta}
+                cashRegisterIsOpen={cashRegister.isOpen}
               />
             )
           )}
