@@ -651,7 +651,7 @@ export default function ComandaView({
             </button>
           </div>
         ) : (
-          <div className="flex-grow flex flex-col overflow-hidden pt-4 space-y-4 justify-between">
+          <div className="flex-grow flex flex-col min-h-0 overflow-hidden pt-4 space-y-4 justify-between">
             
             {/* Status indicators */}
             <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2 shrink-0 text-xs">
@@ -891,7 +891,7 @@ export default function ComandaView({
 
       {/* RIGHT COLUMN: Product Catalog selection */}
       {order && (
-        <div className={`${activeMobileTab === 'menu' ? 'flex flex-grow flex-1' : 'hidden'} lg:flex lg:flex-grow flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden lg:h-full`}>
+        <div className={`${activeMobileTab === 'menu' ? 'flex flex-col flex-1 min-h-0' : 'hidden'} lg:flex lg:flex-grow lg:min-h-0 flex-col bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden lg:h-full`}>
           
           {/* Search and Categories bar */}
           <div className="space-y-3 shrink-0 pb-3 border-b border-slate-100">
