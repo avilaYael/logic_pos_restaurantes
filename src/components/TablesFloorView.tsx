@@ -67,6 +67,7 @@ interface TablesFloorViewProps {
   onManageOrder: (table: Table) => void;
   branchZones: string[];
   onPrintPrecuenta?: (orderData: any, tableData: any, callbacks?: any) => void;
+  cashRegisterIsOpen?: boolean;
 }
 
 
@@ -80,7 +81,8 @@ export default function TablesFloorView({
   user,
   onManageOrder,
   branchZones,
-  onPrintPrecuenta
+  onPrintPrecuenta,
+  cashRegisterIsOpen = true
 }: TablesFloorViewProps) {
   const [selectedZone, setSelectedZone] = useState<string>('Todas');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'libre' | 'ocupada' | 'por_cobrar'>('All');
@@ -387,6 +389,229 @@ export default function TablesFloorView({
     }
   };
 
+  const renderActiveTableDetails = () => {
+    if (!activeTable) return null;
+    const tableOrder = activeOrdersMap.get(activeTable.id);
+    const orderItems = tableOrder?.items || [];
+    const orderTotal = orderItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+
+    return (
+      <div className="flex-1 flex flex-col justify-between h-full">
+        
+        {/* Upper Details block */}
+        <div className="space-y-5">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div>
+              <h4 className="text-base font-black tracking-tight flex items-center gap-1.5 text-slate-800">
+                <span>{activeTable.name}</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 rounded-lg text-slate-500">
+                  {activeTable.zone || 'Principal'}
+                </span>
+              </h4>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Detalle Operativo</p>
+            </div>
+            <button
+              onClick={() => setActiveTable(null)}
+              aria-label="Cerrar"
+              className="text-slate-400 hover:text-slate-600 font-extrabold text-sm cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Status Indicator Panel */}
+          <div 
+            className="p-3.5 rounded-2xl flex items-center gap-3 border shadow-inner"
+            style={{
+              backgroundColor: activeTable.status === 'ocupada' 
+                ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 6%, white)'
+                : activeTable.status === 'por_cobrar'
+                ? 'bg-amber-50/50'
+                : 'color-mix(in srgb, var(--brand-primary, #6366f1) 6%, white)',
+              borderColor: activeTable.status === 'ocupada'
+                ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 12%, transparent)'
+                : activeTable.status === 'por_cobrar'
+                ? 'var(--color-amber-100)'
+                : 'color-mix(in srgb, var(--brand-primary, #6366f1) 12%, transparent)'
+            }}
+          >
+            <span className="text-2xl">
+              {activeTable.status === 'ocupada' ? <Utensils className="w-6 h-6 text-rose-500" /> : activeTable.status === 'por_cobrar' ? <DollarSign className="w-6 h-6 text-amber-500" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+            </span>
+            <div className="leading-tight text-slate-800">
+              <h5 className="text-xs font-black uppercase tracking-wide">
+                {activeTable.status === 'ocupada' ? 'Mesa Ocupada' : activeTable.status === 'por_cobrar' ? 'Por Cobrar' : 'Disponible / Libre'}
+              </h5>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {activeTable.status === 'ocupada' ? 'Capacidad de comensales: 4 personas' : activeTable.status === 'por_cobrar' ? 'Esperando pago del cliente' : 'Lista para recibir clientes'}
+              </p>
+            </div>
+          </div>
+
+          {/* Assigned Waiter info */}
+          {tableOrder && (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shadow-sm flex-shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="leading-tight">
+                <p className="text-[9px] uppercase font-black text-slate-400">Mesero Asignado</p>
+                <p className="text-xs font-bold text-slate-700 mt-0.5">{tableOrder.waiterName || 'Sin asignar'}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Bill summary info */}
+          {tableOrder && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-150 text-left">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Monto Cuenta</span>
+                <span className="text-sm font-black text-rose-600 block mt-0.5">{formatMXN(orderTotal)}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-150 text-left">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Tiempo Transcurrido</span>
+                <span className="text-xs font-bold text-slate-650 flex items-center gap-1 mt-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{Math.floor((Date.now() - Date.parse(tableOrder.openedAt)) / 60000)} min</span>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Bill Items list */}
+          {tableOrder && orderItems.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Artículos Consumidos</span>
+              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2.5 bg-slate-50/50">
+                {orderItems.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs text-slate-650 leading-tight">
+                    <span className="font-bold">{item.quantity}x {item.productName}</span>
+                    <span className="font-mono text-slate-500 font-bold">
+                      {formatMXN(item.unitPrice * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Action buttons */}
+        <div className="space-y-2.5 pt-5 border-t border-slate-100 mt-5">
+          {currentUserMember?.role === 'employee' ? (
+            // Cajero (employee) specific actions
+            activeTable.status === 'por_cobrar' ? (
+              <div className="flex flex-col gap-2">
+                {activeTable.precuentaPrinted === false && (
+                  <button
+                    type="button"
+                    onClick={() => handlePrintPrecuentaDirect(activeTable)}
+                    disabled={isPrintingPrecuenta}
+                    className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50 animate-pulse"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    {isPrintingPrecuenta ? 'Imprimiendo...' : 'Imprimir Pre-cuenta'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!cashRegisterIsOpen) {
+                      alert('No se pueden cobrar cuentas con la caja cerrada. Por favor, realiza la apertura de caja desde el panel de control primero.');
+                      return;
+                    }
+                    onManageOrder(activeTable);
+                  }}
+                  className={`w-full py-3 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5 ${
+                    cashRegisterIsOpen
+                      ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-98'
+                      : 'bg-slate-400 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />Cobrar Cuenta
+                </button>
+              </div>
+            ) : activeTable.status === 'ocupada' ? (
+              <div className="p-3 bg-rose-50/40 dark:bg-rose-950/10 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
+                <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
+                  Mesa en consumo. Esperando a que el mesero solicite la cuenta.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-center border border-slate-200 dark:border-slate-800">
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                  Mesa disponible. Apertura exclusiva para Meseros.
+                </p>
+              </div>
+            )
+          ) : (
+            // Regular actions for Owner, Admin, Waiter
+            activeTable.status === 'libre' ? (
+              <button
+                type="button"
+                onClick={() => handleOpenTable(activeTable)}
+                className="w-full py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
+              >
+                Apertura de Mesa
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => onManageOrder(activeTable)}
+                  className="w-full py-3 bg-slate-800 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />Gestionar Comanda / Cobrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextStatus = activeTable.status === 'ocupada' ? 'por_cobrar' : 'ocupada';
+                    updateDoc(doc(db, 'companies', activeCompanyId, 'tables', activeTable.id), {
+                      status: nextStatus
+                    }).then(() => {
+                      setActiveTable(prev => prev ? { ...prev, status: nextStatus } : null);
+                    }).catch(err => {
+                      handleFirestoreError(err, OperationType.UPDATE, `companies/${activeCompanyId}/tables/${activeTable.id}`);
+                    });
+                  }}
+                  className={`w-full py-2 border rounded-xl text-xs font-black text-center transition cursor-pointer uppercase tracking-wider ${
+                    activeTable.status === 'ocupada'
+                      ? 'border-amber-300 bg-amber-50/30 text-amber-700 hover:bg-amber-50'
+                      : 'border-rose-300 bg-rose-50/30 text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  {activeTable.status === 'ocupada' ? 'Marcar Por Cobrar' : 'Regresar a Ocupada'}
+                </button>
+              </div>
+            )
+          )}
+
+          {activeTable.status !== 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
+            <button
+              type="button"
+              onClick={() => handleReleaseTable(activeTable)}
+              className="w-full py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-650 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide"
+            >
+              Liberar sin Cobro / Cancelar
+            </button>
+          )}
+
+          {activeTable.status === 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
+            <button
+              type="button"
+              onClick={() => handleDeleteTable(activeTable)}
+              className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide border border-red-205 flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-3 h-3" />Eliminar Mesa del Salón
+            </button>
+          )}
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 bg-slate-50 min-h-screen text-slate-800 flex flex-col space-y-6">
 
@@ -644,221 +869,11 @@ export default function TablesFloorView({
             </div>
           )}
         </div>
-
-        {/* Selected Table Drawer/Details Sidepanel */}
-        <div className="lg:col-span-4 flex flex-col space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm min-h-[500px] flex flex-col justify-between">
+                {/* Selected Table Drawer/Details Sidepanel (Desktop Only) */}
+        <div className="hidden lg:flex lg:col-span-4 flex-col space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm min-h-[500px] flex flex-col justify-between w-full">
             {activeTable ? (
-              <div className="flex-1 flex flex-col justify-between">
-                
-                {/* Upper Details block */}
-                <div className="space-y-5">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                    <div>
-                      <h4 className="text-base font-black tracking-tight flex items-center gap-1.5">
-                        <span>{activeTable.name}</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 rounded-lg text-slate-500">
-                          {activeTable.zone || 'Principal'}
-                        </span>
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Detalle Operativo</p>
-                    </div>
-                    <button
-                      onClick={() => setActiveTable(null)}
-                      aria-label="Cerrar"
-                      className="text-slate-400 hover:text-slate-600 font-extrabold text-sm"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Status Indicator Panel */}
-                  <div 
-                    className="p-3.5 rounded-2xl flex items-center gap-3 border shadow-inner"
-                    style={{
-                      backgroundColor: activeTable.status === 'ocupada' 
-                        ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 6%, white)'
-                        : activeTable.status === 'por_cobrar'
-                        ? 'bg-amber-50/50'
-                        : 'color-mix(in srgb, var(--brand-primary, #6366f1) 6%, white)',
-                      borderColor: activeTable.status === 'ocupada'
-                        ? 'color-mix(in srgb, var(--brand-accent, #a855f7) 12%, transparent)'
-                        : activeTable.status === 'por_cobrar'
-                        ? 'var(--color-amber-100)'
-                        : 'color-mix(in srgb, var(--brand-primary, #6366f1) 12%, transparent)'
-                    }}
-                  >
-                    <span className="text-2xl">
-                      {activeTable.status === 'ocupada' ? <Utensils className="w-6 h-6" /> : activeTable.status === 'por_cobrar' ? <DollarSign className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
-                    </span>
-                    <div>
-                      <h5 className="text-xs font-black uppercase tracking-wide">
-                        {activeTable.status === 'ocupada' ? 'Mesa Ocupada' : activeTable.status === 'por_cobrar' ? 'Por Cobrar' : 'Disponible / Libre'}
-                      </h5>
-                      <p className="text-[10px] text-slate-500">
-                        Capacidad de comensales: {activeTable.capacity || 4} personas
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Table details lists */}
-                  <div className="space-y-3.5">
-                    {selectedTableOrder && (
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[var(--brand-primary,#6366f1)]/10 text-[var(--brand-primary,#6366f1)] flex items-center justify-center">
-                          <User className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Mesero Asignado</span>
-                          <span className="text-xs font-extrabold text-slate-700">
-                            {selectedTableOrder.waiterName}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTable.status !== 'libre' && selectedTableOrder && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-150">
-                          <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Monto Cuenta</span>
-                          <span className="text-sm font-black text-rose-600 mt-0.5 block">
-                            {formatMXN(selectedTableOrder.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0))}
-                          </span>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-150">
-                          <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Tiempo Transcurrido</span>
-                          <span className="text-sm font-bold text-slate-700 mt-0.5 block flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 inline text-slate-400" />
-                            {Math.floor((Date.now() - Date.parse(selectedTableOrder.openedAt)) / 60000)} min
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Real Active items in current order */}
-                  {activeTable.status !== 'libre' && selectedTableOrder && selectedTableOrder.items.length > 0 && (
-                    <div className="space-y-2 mt-4">
-                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Artículos Consumidos</span>
-                      <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 text-xs max-h-[160px] overflow-y-auto">
-                        {selectedTableOrder.items.map((item, idx) => (
-                          <div key={idx} className="p-2.5 flex justify-between bg-slate-50/50">
-                            <span className="font-semibold text-slate-700">
-                              {item.quantity}x {item.name}
-                            </span>
-                            <span className="font-extrabold text-slate-850">
-                              {formatMXN(item.unitPrice * item.quantity)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom Action buttons */}
-                <div className="space-y-2.5 pt-5 border-t border-slate-100 mt-5">
-                  {currentUserMember?.role === 'employee' ? (
-                    // Cajero (employee) specific actions
-                    activeTable.status === 'por_cobrar' ? (
-                      <div className="flex flex-col gap-2">
-                        {activeTable.precuentaPrinted === false && (
-                          <button
-                            type="button"
-                            onClick={() => handlePrintPrecuentaDirect(activeTable)}
-                            disabled={isPrintingPrecuenta}
-                            className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            {isPrintingPrecuenta ? 'Imprimiendo...' : 'Imprimir Pre-cuenta'}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => onManageOrder(activeTable)}
-                          className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
-                        >
-                          <FolderOpen className="w-3.5 h-3.5" />Cobrar Cuenta
-                        </button>
-                      </div>
-                    ) : activeTable.status === 'ocupada' ? (
-                      <div className="p-3 bg-rose-50/40 dark:bg-rose-950/10 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
-                        <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
-                          Mesa en consumo. Esperando a que el mesero solicite la cuenta.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-center border border-slate-200 dark:border-slate-800">
-                        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
-                          Mesa disponible. Apertura exclusiva para Meseros.
-                        </p>
-                      </div>
-                    )
-                  ) : (
-                    // Regular actions for Owner, Admin, Waiter
-                    activeTable.status === 'libre' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenTable(activeTable)}
-                        className="w-full py-3 bg-[var(--brand-primary,#6366f1)] hover:bg-[color-mix(in_srgb,var(--brand-primary,#6366f1)_90%,black)] active:scale-98 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer text-center uppercase tracking-wider"
-                      >
-                        Apertura de Mesa
-                      </button>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onManageOrder(activeTable)}
-                          className="w-full py-3 bg-slate-800 hover:bg-black text-white font-extrabold text-xs rounded-xl transition cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
-                        >
-                          <FolderOpen className="w-3.5 h-3.5" />Gestionar Comanda / Cobrar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nextStatus = activeTable.status === 'ocupada' ? 'por_cobrar' : 'ocupada';
-                            updateDoc(doc(db, 'companies', activeCompanyId, 'tables', activeTable.id), {
-                              status: nextStatus
-                            }).then(() => {
-                              setActiveTable(prev => prev ? { ...prev, status: nextStatus } : null);
-                            }).catch(err => {
-                              handleFirestoreError(err, OperationType.UPDATE, `companies/${activeCompanyId}/tables/${activeTable.id}`);
-                            });
-                          }}
-                          className={`w-full py-2 border rounded-xl text-xs font-black text-center transition cursor-pointer uppercase tracking-wider ${
-                            activeTable.status === 'ocupada'
-                              ? 'border-amber-300 bg-amber-50/30 text-amber-700 hover:bg-amber-50'
-                              : 'border-rose-300 bg-rose-50/30 text-rose-700 hover:bg-rose-50'
-                          }`}
-                        >
-                          {activeTable.status === 'ocupada' ? 'Marcar Por Cobrar' : 'Regresar a Ocupada'}
-                        </button>
-                      </div>
-                    )
-                  )}
-
-                  {activeTable.status !== 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
-                    <button
-                      type="button"
-                      onClick={() => handleReleaseTable(activeTable)}
-                      className="w-full py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide"
-                    >
-                      Liberar sin Cobro / Cancelar
-                    </button>
-                  )}
-
-                  {activeTable.status === 'libre' && currentUserMember?.role !== 'mesero' && currentUserMember?.role !== 'employee' && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTable(activeTable)}
-                      className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 font-extrabold text-[10px] uppercase rounded-xl transition cursor-pointer text-center tracking-wide border border-red-200 flex items-center justify-center gap-1.5"
-                    >
-                      <Trash2 className="w-3 h-3" />Eliminar Mesa del Salón
-                    </button>
-                  )}
-                </div>
-
-              </div>
+              renderActiveTableDetails()
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-400 py-10">
                 <HelpCircle className="w-10 h-10 mb-2 stroke-1" />
@@ -872,6 +887,15 @@ export default function TablesFloorView({
         </div>
 
       </div>
+
+      {/* Selected Table Drawer/Details Popup Modal (Mobile & Tablet) */}
+      {activeTable && (
+        <div className="lg:hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl flex flex-col justify-between max-h-[85vh] w-full max-w-md overflow-y-auto animate-in zoom-in-95 duration-200 text-slate-800">
+            {renderActiveTableDetails()}
+          </div>
+        </div>
+      )}
 
       {/* Premium Add Table Modal */}
       {isAddModalOpen && (
